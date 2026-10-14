@@ -1,0 +1,49 @@
+/**
+ * Compiled stylesheet for the shared components.
+ *
+ * `pnpm build` compiles this to dist/styles.css, scanning only this package's
+ * sources — the components ship their own styles, and apps import the compiled
+ * result as plain CSS instead of scanning this package with `@source`. Every
+ * selector in the output is prefixed with `.site-root__html` (see
+ * postcss.config.js), so the styles only apply inside a site root.
+ *
+ * Tailwind's default theme is imported as `reference`: utilities compile
+ * against it, but the variables are emitted by the consuming app's own
+ * Tailwind build, so nothing here duplicates app CSS.
+ *
+ * Preflight IS included, remapped by postcss.config.js so `html` becomes
+ * `.site-root__html` and `body` becomes `.site-root__body`. The site root
+ * re-establishes its whole baseline from the root element inward, so a host
+ * document's globals (e.g. the admin's shadcn base layer) can't bleed into it.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' theme(reference);
+@import './tailwind.css';
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@source './';
+
+/**
+ * Isolation boundary for embedding contexts (e.g. the admin's page builder).
+ * Wrap the site root in `<div class="site-root">` to sever style inheritance
+ * from the host document; the remapped preflight and the site theme then
+ * rebuild the full html/body baseline on .site-root__html / .site-root__body.
+ * The site itself doesn't render this wrapper — <html> is the site root there.
+ * Custom properties are exempt from `all`, so design tokens still flow.
+ * Unlayered on purpose: it must outrank the host's layered globals.
+ */
+.site-root {
+	all: initial !important;
+	/* Grid, not block: `initial` would mean display: inline, and a single-row
+	   grid stretches the site root to this element's height. Block would leave
+	   the root content-sized, so `height: 100%` inside it has nothing to
+	   resolve against and a full-height region collapses in the preview. */
+	display: grid !important;
+	/* Fill whatever height the host provides — the editor's canvas — and stay
+	   content-sized when it provides none. The same rule the Region follows:
+	   fill the space the container gives, never more. */
+	min-height: 100% !important;
+	/* Neutral default only: the site theme sets the real scheme on
+	   .site-root__html, so the preview shows what visitors see. */
+	color-scheme: inherit !important;
+}

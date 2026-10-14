@@ -1,0 +1,22 @@
+{
+	"name": "types",
+	"version": "1.0.0",
+	"description": "Shared ambient TypeScript declarations for the Stormy CMS boilerplate",
+	"private": true,
+	"license": "ISC",
+	"types": "./index.d.ts",
+	"exports": {
+		".": "./index.d.ts"
+	},
+	"files": [
+		"index.d.ts",
+		"css-modules.d.ts",
+		"global/index.d.ts"
+	],
+	"peerDependencies": {
+		"@types/react": ">=19"
+	},
+	"devDependencies": {
+		"@types/react": "^19"
+	}
+}

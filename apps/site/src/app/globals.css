@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+@import 'theme/theme.css';
+@import 'components/tailwind.css';
+@import 'components/styles.css';
+
+/* The site root's colour scheme and height chain both live in theme/theme.css,
+   which the editor preview imports too, so the preview matches the live site.
+   Start dark or follow the visitor's device by adding `.theme--dark` or
+   `.theme--system` on <html>. */

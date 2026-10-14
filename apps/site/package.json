@@ -1,0 +1,35 @@
+{
+	"name": "site",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "npm run init:env && next dev --turbopack",
+		"build": "next build",
+		"start": "next start",
+		"lint": "eslint . --cache --cache-location=node_modules/.cache/eslint/.eslint-cache",
+		"lint:fix": "pnpm lint -- --fix",
+		"format": "prettier . --check --cache --cache-location=node_modules/.cache/prettier/.prettier-cache --ignore-path=../../.gitignore",
+		"format:fix": "prettier . --write --ignore-path=../../.gitignore",
+		"test": "vitest run --coverage",
+		"typecheck": "tsc --noEmit",
+		"init:env": "[ -f .env ] || cp .env.example .env"
+	},
+	"dependencies": {
+		"components": "workspace:*",
+		"next": "16.2.1",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4",
+		"theme": "workspace:*",
+		"zod": "^3.24.2"
+	},
+	"devDependencies": {
+		"@tailwindcss/postcss": "^4.2.2",
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"autoprefixer": "^10.4.27",
+		"tailwindcss": "^4.2.2",
+		"types": "workspace:*",
+		"typescript": "^5"
+	}
+}

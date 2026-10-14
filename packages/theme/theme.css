@@ -1,0 +1,129 @@
+/**
+ * Your site theme — this is where your brand lives.
+ *
+ * This file is the single source of truth for how your site looks, scoped to
+ * `.site-root__*`. Your public site imports it as its own theme, and the admin
+ * imports it too (only to paint the live preview) so the page builder always
+ * matches your real site. It's the one theme both share; each app otherwise
+ * keeps its own Tailwind `@theme` layer, so editing one never affects the other.
+ *
+ * To rebrand, you usually only need to edit the color values below. They use
+ * the AIR naming convention (--color-{affiliation}-{id}[-{variation}][-c]) and
+ * are written with `light-dark(light, dark)`, so one line covers both light and
+ * dark mode — there's no separate dark block to keep in sync. The semantic
+ * aliases further down reference these colors and rarely need changing.
+ *
+ * Your site is light for every visitor, whatever their device is set to, so what
+ * you approve in the editor is what they see. A visitor can switch to dark
+ * themselves if you place a Theme Toggle on the page, and you can pick a
+ * different starting point on <html> in apps/site/src/app/globals.css.
+ *
+ * The palette is intentionally quiet: near-neutral greys and one restrained
+ * accent. It is a frame for your photographs, logo and words, not a look of its
+ * own. Change the accent first if you want it to feel like you.
+ */
+
+.site-root__html {
+	--radius: 0.5rem;
+
+	/* Space between things, named for how closely they relate rather than for a
+	   size. Components never set their own margins; a container picks one of
+	   these for its children, so retuning the whole site's rhythm happens here.
+	   --flow-measure is how wide a line of text may get before it is tiring to
+	   read; --flow-inset is the breathing room kept clear of the screen edge. */
+	--flow-measure: 64rem;
+	--flow-inset: 1.5rem;
+	--flow-rhythm-related: 0.75rem;
+	--flow-rhythm-distinct: 2rem;
+	--flow-rhythm-separate: 4.5rem;
+
+	--font-body: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif);
+	--font-display: var(--font-body);
+	--font-mono: var(--font-geist-mono, ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace);
+
+	/* AIR tokens — one `light-dark(light, dark)` declaration per token. */
+	--color-site-1: light-dark(#ffffff, #121212); /* page background */
+	--color-site-1-1: light-dark(#ffffff, #1a1a1a); /* surface (cards) */
+	--color-site-1-2: light-dark(#f5f5f5, #232323); /* raised / muted surface */
+	--color-site-1-c: light-dark(#141414, #f5f5f5); /* high-contrast text */
+	--color-site-1-c-1: light-dark(#2b2b2b, #e3e3e3); /* body text */
+	--color-site-1-c-2: light-dark(#6b6b6b, #a1a1a1); /* dimmed text */
+	--color-site-2: light-dark(#e5e5e5, #2e2e2e); /* subtle line */
+
+	--color-accent-1: light-dark(#1f1f1f, #ededed);
+	--color-accent-1-1: light-dark(#3d3d3d, #c9c9c9); /* hover */
+	--color-accent-1-c: light-dark(#ffffff, #141414);
+
+	--color-success-1: light-dark(#15803d, #4ade80);
+	--color-success-1-c: light-dark(#ffffff, #052e16);
+	--color-error-1: light-dark(#dc2626, #f87171);
+	--color-error-1-c: light-dark(#ffffff, #450a0a);
+	--color-warning-1: light-dark(#a16207, #facc15);
+	--color-warning-1-c: light-dark(#ffffff, #422006);
+	--color-info-1: light-dark(#0369a1, #7dd3fc);
+	--color-info-1-c: light-dark(#ffffff, #082f49);
+
+	/* Semantic aliases consumed by the shared components (shadcn-style names).
+	   Declared once — they inherit the scheme through the AIR tokens above. */
+	--background: var(--color-site-1);
+	--foreground: var(--color-site-1-c-1);
+	--card: var(--color-site-1-1);
+	--card-foreground: var(--color-site-1-c-1);
+	--popover: var(--color-site-1-1);
+	--popover-foreground: var(--color-site-1-c-1);
+	--primary: var(--color-accent-1);
+	--primary-foreground: var(--color-accent-1-c);
+	--secondary: var(--color-site-1-2);
+	--secondary-foreground: var(--color-site-1-c);
+	--muted: var(--color-site-1-2);
+	--muted-foreground: var(--color-site-1-c-2);
+	--accent: var(--color-site-1-2);
+	--accent-foreground: var(--color-site-1-c);
+	--destructive: var(--color-error-1);
+	--destructive-foreground: var(--color-error-1-c);
+	--border: var(--color-site-2);
+	--input: var(--color-site-2);
+	--ring: var(--color-accent-1);
+}
+
+/* Light for every visitor, wherever this theme renders — the live site and the
+   editor preview alike, so the preview shows what visitors see. .theme--dark
+   starts dark, .theme--system follows the visitor's device, and the Theme
+   Toggle component flips these at runtime. */
+.site-root__html {
+	color-scheme: light;
+}
+.site-root__html.theme--light {
+	color-scheme: light;
+}
+.site-root__html.theme--dark {
+	color-scheme: dark;
+}
+.site-root__html.theme--system {
+	color-scheme: light dark;
+}
+
+/* The height chain, here rather than in the site's globals so the editor
+   preview inherits it too: without it the preview canvas sizes to its content
+   and a full-height region has nothing to fill. On the live site this resolves
+   against the viewport; in the preview, against the canvas. */
+.site-root__html {
+	height: 100%;
+}
+
+.site-root__body {
+	display: grid;
+	/* Content takes the room, anything trailing it (the attribution footer)
+	   takes only what it needs — so a region filling 100% lands its footer
+	   above that rather than shoving it off the screen. */
+	grid-template-rows: 1fr auto;
+	height: 100%;
+	margin: 0;
+	min-height: 100%;
+	color: var(--foreground);
+	background: var(--background);
+	font-family: var(--font-body);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+}

@@ -1,0 +1,18 @@
+{
+	"name": "theme",
+	"version": "1.0.0",
+	"description": "Your site's brand theme — shared design tokens for the public site and the admin's live preview",
+	"private": true,
+	"license": "ISC",
+	"type": "module",
+	"exports": {
+		"./theme.css": "./theme.css"
+	},
+	"files": [
+		"theme.css"
+	],
+	"scripts": {
+		"format": "prettier . --check --cache --cache-location=node_modules/.cache/prettier/.prettier-cache --ignore-path=../../.gitignore",
+		"format:fix": "prettier . --write --ignore-path=../../.gitignore"
+	}
+}

@@ -1,0 +1,50 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "tui",
+	"globalPassThroughEnv": [
+		"E2E_ALLOW_COOKIE_BYPASS",
+		"E2E_BASE_URL",
+		"E2E_TEST_DIR",
+		"PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
+		"PLAYWRIGHT_WORKERS"
+	],
+	"tasks": {
+		"components#build": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["dist/**"]
+		},
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$", ".env*"],
+			"outputs": [".next/**", "!.next/cache/**"]
+		},
+		"lint": {
+			"dependsOn": ["^lint"]
+		},
+		"lint:fix": {
+			"dependsOn": ["^lint:fix"]
+		},
+		"format": {
+			"dependsOn": ["^format"]
+		},
+		"format:fix": {
+			"dependsOn": ["^format:fix"]
+		},
+		"typecheck": {
+			"dependsOn": ["^typecheck"]
+		},
+		"test": {
+			"dependsOn": ["^test"]
+		},
+		"test:e2e": {
+			"dependsOn": ["^build"],
+			"cache": false
+		},
+		"dev": {
+			"dependsOn": ["^build", "components#build"],
+			"cache": false,
+			"persistent": true
+		}
+	}
+}
