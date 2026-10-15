@@ -12,7 +12,11 @@
 		"components#build": {
 			"dependsOn": ["^build"],
 			"inputs": ["$TURBO_DEFAULT$"],
-			"outputs": ["dist/**"]
+			"outputs": ["dist/**"],
+			"env": [
+				"STORMY_CMS_CLIENT_ID",
+				"STORMY_CMS_CLIENT_SECRET"
+			]
 		},
 		"build": {
 			"dependsOn": ["^build"],
