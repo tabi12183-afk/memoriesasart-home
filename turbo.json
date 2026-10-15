@@ -1,6 +1,20 @@
 {
 	"$schema": "https://turbo.build/schema.json",
 	"ui": "tui",
+	"globalEnv": [
+		"STORMY_CMS_CLIENT_ID",
+		"STORMY_CMS_CLIENT_SECRET",
+		"STORMY_CMS_REDIRECT_URL",
+		"NEXT_PUBLIC_SITE_URL",
+		"NEXT_PUBLIC_PREVIEW_SITE_URL",
+		"S3_ENDPOINT",
+		"S3_BUCKET",
+		"S3_ACCESS_KEY_ID",
+		"S3_SECRET_ACCESS_KEY",
+		"S3_REGION",
+		"NEXT_DIST_DIR",
+		"E2E_BYPASS_AUTH"
+	],
 	"globalPassThroughEnv": [
 		"E2E_ALLOW_COOKIE_BYPASS",
 		"E2E_BASE_URL",
@@ -12,20 +26,12 @@
 		"components#build": {
 			"dependsOn": ["^build"],
 			"inputs": ["$TURBO_DEFAULT$"],
-			"outputs": ["dist/**"],
-			"env": [
-				"STORMY_CMS_CLIENT_ID",
-				"STORMY_CMS_CLIENT_SECRET"
-			]
+			"outputs": ["dist/**"]
 		},
 		"build": {
 			"dependsOn": ["^build"],
 			"inputs": ["$TURBO_DEFAULT$", ".env*"],
-			"outputs": [".next/**", "!.next/cache/**"],
-			"env": [
-				"STORMY_CMS_CLIENT_ID",
-				"STORMY_CMS_CLIENT_SECRET"
-			]
+			"outputs": [".next/**", "!.next/cache/**"]
 		},
 		"lint": {
 			"dependsOn": ["^lint"]
