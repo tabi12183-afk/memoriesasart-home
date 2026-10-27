@@ -82,10 +82,30 @@ describe('PagesPage', () => {
 		expect(screen.getByTestId('create-page-dialog')).toHaveTextContent('about,,draft');
 	});
 
-	it('shows an empty state when there are no pages or fetching fails', async () => {
-		client.getPages.mockRejectedValue(new Error('down'));
+	it('shows an empty state when the site has no pages', async () => {
+		client.getPages.mockResolvedValue([]);
 		render(await PagesPage());
 		expect(screen.getByText(/No pages yet/)).toBeInTheDocument();
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
+
+	it('shows whatever was thrown when loading the pages fails without an Error', async () => {
+		client.getPages.mockRejectedValue('offline');
+		render(await PagesPage());
+		expect(screen.getByRole('alert')).toHaveTextContent('offline');
+	});
+
+	it('says the pages could not be loaded, rather than that there are none, when fetching fails', async () => {
+		client.getPages.mockRejectedValue(
+			new Error('Pages not found: The client secret is not valid for this site; it may have been reset.'),
+		);
+		render(await PagesPage());
+		const alert = screen.getByRole('alert');
+		expect(alert).toHaveTextContent('Your pages could not be loaded.');
+		expect(alert).toHaveTextContent(
+			'Pages not found: The client secret is not valid for this site; it may have been reset.',
+		);
+		expect(screen.queryByText(/No pages yet/)).not.toBeInTheDocument();
 	});
 
 	describe('createNewPage action', () => {
@@ -160,10 +180,30 @@ describe('LayoutsPage', () => {
 		expect(screen.getByRole('link', { name: /Two column/ })).toHaveAttribute('href', '/layouts/l2');
 	});
 
-	it('shows an empty state when fetching layouts fails', async () => {
-		client.getLayouts.mockRejectedValue(new Error('down'));
+	it('shows an empty state when the site has no layouts', async () => {
+		client.getLayouts.mockResolvedValue([]);
 		render(await LayoutsPage());
 		expect(screen.getByText(/No layouts yet/)).toBeInTheDocument();
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
+
+	it('shows whatever was thrown when loading the layouts fails without an Error', async () => {
+		client.getLayouts.mockRejectedValue('offline');
+		render(await LayoutsPage());
+		expect(screen.getByRole('alert')).toHaveTextContent('offline');
+	});
+
+	it('says the layouts could not be loaded, rather than that there are none, when fetching fails', async () => {
+		client.getLayouts.mockRejectedValue(
+			new Error('Layouts not found: The client secret is not valid for this site; it may have been reset.'),
+		);
+		render(await LayoutsPage());
+		const alert = screen.getByRole('alert');
+		expect(alert).toHaveTextContent('Your layouts could not be loaded.');
+		expect(alert).toHaveTextContent(
+			'Layouts not found: The client secret is not valid for this site; it may have been reset.',
+		);
+		expect(screen.queryByText(/No layouts yet/)).not.toBeInTheDocument();
 	});
 
 	describe('createNewLayout action', () => {

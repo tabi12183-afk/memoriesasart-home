@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { StormyCMSClient } from '@stormycms/core';
 import emptyModule from '../../empty-module';
 import nextConfig from '../../next.config';
@@ -13,6 +13,17 @@ describe('stormy-cms-client', () => {
 describe('next.config', () => {
 	it('transpiles the shared components package', () => {
 		expect(nextConfig.transpilePackages).toContain('components');
+	});
+
+	it('builds into .next unless NEXT_DIST_DIR names another folder, so a second dev server can run beside the first', async () => {
+		expect(nextConfig.distDir).toBe('.next');
+
+		vi.stubEnv('NEXT_DIST_DIR', '.next-stack');
+		vi.resetModules();
+		const { default: secondServerConfig } = await import('../../next.config');
+		vi.unstubAllEnvs();
+
+		expect(secondServerConfig.distDir).toBe('.next-stack');
 	});
 
 	it('only allows https image sources', () => {

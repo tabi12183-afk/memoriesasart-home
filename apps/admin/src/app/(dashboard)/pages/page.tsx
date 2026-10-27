@@ -62,10 +62,12 @@ const createNewPage = async (formData: FormData) => {
 
 export default async function PagesPage() {
 	let pages: Awaited<ReturnType<typeof stormyCMSClient.getPages>> = [];
+	let loadError: string | null = null;
 	try {
 		pages = await stormyCMSClient.getPages();
 	} catch (err) {
 		console.error('Failed to fetch pages:', err);
+		loadError = err instanceof Error ? err.message : String(err);
 	}
 	return (
 		<div className="px-4 lg:px-6">
@@ -73,7 +75,14 @@ export default async function PagesPage() {
 				<h1 className="text-2xl font-bold">Pages</h1>
 				<CreatePageDialog action={createNewPage} existingSlugs={pages.map((page) => page.slug ?? '')} />
 			</div>
-			{pages.length === 0 ? (
+			{loadError !== null ? (
+				<Card>
+					<CardContent role="alert" className="py-10 text-center text-destructive space-y-2">
+						<p className="font-medium">Your pages could not be loaded.</p>
+						<p className="text-sm">{loadError}</p>
+					</CardContent>
+				</Card>
+			) : pages.length === 0 ? (
 				<Card>
 					<CardContent className="py-10 text-center text-muted-foreground">
 						No pages yet. Create your first page to get started.

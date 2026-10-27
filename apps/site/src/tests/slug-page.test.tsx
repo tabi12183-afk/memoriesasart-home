@@ -82,10 +82,12 @@ describe('Page', () => {
 		expect(getPageBySlug).toHaveBeenCalledWith({ slug: '' });
 	});
 
-	it('serves repeat requests for a slug from the page cache', async () => {
-		getPageBySlug.mockResolvedValue(cmsPage('cached'));
-		await Page(params(['cached']));
-		await Page(params(['cached']));
-		expect(getPageBySlug).toHaveBeenCalledTimes(1);
+	it('shows edits on the next request', async () => {
+		const edited = (title: string) => ({ ...cmsPage('edited'), metadata: { title, description: '' } });
+		getPageBySlug.mockResolvedValueOnce(edited('Before the edit'));
+		await expect(generateMetadata(params(['edited']))).resolves.toMatchObject({ title: 'Before the edit' });
+
+		getPageBySlug.mockResolvedValueOnce(edited('After the edit'));
+		await expect(generateMetadata(params(['edited']))).resolves.toMatchObject({ title: 'After the edit' });
 	});
 });

@@ -43,10 +43,12 @@ const createNewLayout = async (formData: FormData) => {
 
 export default async function LayoutsPage() {
 	let layouts: Awaited<ReturnType<typeof stormyCMSClient.getLayouts>> = [];
+	let loadError: string | null = null;
 	try {
 		layouts = await stormyCMSClient.getLayouts();
 	} catch (err) {
 		console.error('Failed to fetch layouts:', err);
+		loadError = err instanceof Error ? err.message : String(err);
 	}
 
 	return (
@@ -55,7 +57,14 @@ export default async function LayoutsPage() {
 				<h1 className="text-2xl font-bold">Layouts</h1>
 				<CreateLayoutDialog action={createNewLayout} />
 			</div>
-			{layouts.length === 0 ? (
+			{loadError !== null ? (
+				<Card>
+					<CardContent role="alert" className="py-10 text-center text-destructive space-y-2">
+						<p className="font-medium">Your layouts could not be loaded.</p>
+						<p className="text-sm">{loadError}</p>
+					</CardContent>
+				</Card>
+			) : layouts.length === 0 ? (
 				<Card>
 					<CardContent className="py-10 text-center text-muted-foreground">
 						No layouts yet. Create your first layout to get started.

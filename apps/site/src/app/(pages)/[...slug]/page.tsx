@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { mapPageData, type CMSPageData } from '@stormycms/core';
 import { ComponentTree, LayoutTree } from '@stormycms/react/cms';
@@ -8,17 +9,13 @@ import { buildLayoutTree } from '@stormycms/react/cms';
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
-const pageCache: Record<string, CMSPageData> = {};
-
-const getPage = async (_slug?: string[]) => {
-	const slug = _slug?.join('/') ?? '';
-	if (pageCache[slug] !== undefined) return pageCache[slug];
+// Per request only, shared by generateMetadata and Page, so edits show on the next request.
+const getPageBySlug = cache(async (slug: string): Promise<CMSPageData | null> => {
 	const page = await stormyCMSClient.getPageBySlug({ slug });
-	if (page === null) return null;
-	const pageData = mapPageData(page);
-	pageCache[slug] = pageData;
-	return pageData;
-};
+	return page === null ? null : mapPageData(page);
+});
+
+const getPage = (slug?: string[]) => getPageBySlug(slug?.join('/') ?? '');
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string[] }> }) {
 	const page = await getPage((await params).slug);
