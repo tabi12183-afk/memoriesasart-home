@@ -47,6 +47,46 @@
 	display: flex;
 }
 
+:root [data-cms-editable-component][data-cms-paste-open='true'] > [data-cms-editor-control='toolbar'] {
+	display: flex;
+}
+
+[data-cms-editable-component][data-cms-cut='true'] > [data-cms-component] {
+	opacity: 0.5;
+}
+
+[data-cms-editor-dragging='true'] [data-cms-editor-control='toolbar'],
+[data-cms-editor-dragging='true'] [data-cms-editor-control='before'],
+[data-cms-editor-dragging='true'] [data-cms-editor-control='after'] {
+	display: none !important;
+}
+
+[data-cms-editor-dragging='true'] [data-cms-editor-control='drag'] {
+	display: flex !important;
+}
+
+[data-cms-editable-component][data-cms-drop-target='true'],
+[data-cms-editable-component]:has([data-cms-editable-component]:hover)[data-cms-drop-target='true'] {
+	z-index: 30;
+	border-style: solid;
+	border-color: var(--color-brand-1);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-1) 24%, transparent);
+}
+
+[data-cms-editable-component][data-cms-drop-target='true'] > [data-cms-editor-control='navigator'] {
+	display: flex;
+}
+
+[data-cms-editor-dragging='true']
+	[data-cms-editable-component][data-cms-drop-target='true']
+	> [data-cms-editor-control='navigator'] {
+	display: flex !important;
+}
+
+[data-cms-dropzone][data-cms-drop-active='true'] {
+	background: color-mix(in srgb, var(--color-brand-1) 24%, transparent);
+}
+
 /* Editor controls occupy separate bands so they never compete for space:
    add-before sits fully above the component, the label/navigator row hugs the
    top edge inside with the action toolbar at top-right, and add-after sits

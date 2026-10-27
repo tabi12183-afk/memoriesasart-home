@@ -1,6 +1,15 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import {
+	type CSSProperties,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import Image from 'next/image';
 import type {
 	CMSComponentData,
@@ -19,15 +28,34 @@ import { Button } from '~/components/button';
 import { Input } from '~/components/input';
 import { Label } from '~/components/label';
 import { Checkbox } from '~/components/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '~/components/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/select';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Plus, PlusSquare, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import {
+	ArrowDown,
+	ArrowLeft,
+	ArrowRight,
+	ArrowUp,
+	Plus,
+	PlusSquare,
+	Pencil,
+	Trash2,
+	ImageIcon,
+	Grip,
+	Copy,
+	Scissors,
+	ClipboardPaste,
+} from 'lucide-react';
 import cmsExports from 'components';
 import { ObjectId } from 'bson';
+import { toast } from 'sonner';
 import { MediaLibrary } from '~/components/media-library';
 import { MarkdownEditor } from '~/components/markdown-editor';
 import { useEditorSelection } from './editor-selection';
 import { notNullish, nullish } from '~/lib/utils';
+import { isValidComponentDrop, moveComponent, type ComponentMetadataMap } from '~/lib/component-drag';
+import { componentDropzoneBounds } from '~/lib/component-dropzone';
+import { getPasteError, pasteComponent, type ComponentClipboard } from '~/lib/component-clipboard';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/dropdown-menu';
 
 const isValidCMSExport = (name: string): name is keyof typeof cmsExports => {
 	return name in cmsExports;
@@ -45,6 +73,12 @@ function NavigatorKey({ icon, label }: { icon?: ReactNode; label?: string }) {
 /** Shared chrome for floating editor controls: translucent storm surfaces with a brand-blue hover. */
 const controlButtonClass =
 	'pointer-events-auto gap-1 border border-site-2-1 bg-site-1-1/90 text-site-1-c-1 shadow-md backdrop-blur-sm hover:border-brand-1 hover:bg-site-1-2 hover:text-site-1-c';
+
+const pastePlacements: { placement: Placement; label: string }[] = [
+	{ placement: 'before', label: 'Before' },
+	{ placement: 'inside', label: 'As Child' },
+	{ placement: 'after', label: 'After' },
+];
 
 const DefaultComponent = Object.assign(
 	function _Default(props: Record<string, unknown> & { children?: ReactNode }) {
@@ -282,12 +316,25 @@ export type EditableComponentProps = {
 	context: 'page' | 'layout';
 };
 
+type PendingCrossDocumentPaste = { component: CMSComponentData; placement: Placement };
+
 export const EditableComponent = (props: EditableComponentProps) => {
 	const { id, index, parentComponentId, name, initialProps, childComponents, context } = props;
 	const pageCtx = useCMSPage();
 	const layoutCtx = useCMSLayout();
 	const _context = context === 'page' ? pageCtx : layoutCtx;
-	const { activeId, setActiveId, hoveredId, setHoveredId } = useEditorSelection();
+	const {
+		activeId,
+		setActiveId,
+		hoveredId,
+		setHoveredId,
+		draggingId,
+		setDraggingId,
+		dropTarget,
+		setDropTarget,
+		clipboard,
+		setClipboard,
+	} = useEditorSelection();
 
 	const Component: CMSComponent<Record<string, unknown>> = isValidCMSExport(name)
 		? (cmsExports[name] as unknown as CMSComponent<Record<string, unknown>>)
@@ -296,6 +343,8 @@ export const EditableComponent = (props: EditableComponentProps) => {
 	const [editOpen, setEditOpen] = useState(false);
 	const [addOpen, setAddOpen] = useState(false);
 	const [removeOpen, setRemoveOpen] = useState(false);
+	const [pasteOpen, setPasteOpen] = useState(false);
+	const [pendingCrossDocumentPaste, setPendingCrossDocumentPaste] = useState<PendingCrossDocumentPaste | null>(null);
 	const [placement, setPlacement] = useState<Placement>('inside');
 	const [editFormValues, setEditFormValues] = useState<Record<string, unknown>>(() =>
 		Component.fields.reduce(
@@ -323,14 +372,137 @@ export const EditableComponent = (props: EditableComponentProps) => {
 	const isActive = activeId === id;
 	const parentName = notNullish(parentComponentId) ? findComponent(_context.components, parentComponentId)?.name : null;
 	const firstChild = childComponents[0];
-	const siblings = notNullish(parentComponentId)
-		? (findComponent(_context.components, parentComponentId)?.childComponents ?? [])
-		: _context.components;
+	const siblings = useMemo(
+		() =>
+			notNullish(parentComponentId)
+				? (findComponent(_context.components, parentComponentId)?.childComponents ?? [])
+				: _context.components,
+		[_context.components, parentComponentId],
+	);
 	const siblingIndex = siblings.findIndex((sibling) => sibling.id === id);
 	const prevSibling = siblingIndex > 0 ? siblings[siblingIndex - 1] : undefined;
 	const nextSibling = siblingIndex >= 0 ? siblings[siblingIndex + 1] : undefined;
 	// The keyboard target: the pinned selection wins; otherwise the deepest hovered component.
 	const isCurrent = notNullish(activeId) ? isActive : hoveredId === id;
+	const metadata: ComponentMetadataMap = cmsExports;
+	const pasteArgs = (pasteClipboard: Exclude<typeof clipboard, null>, pastePlacement: Placement) => ({
+		components: _context.components,
+		clipboard: pasteClipboard,
+		targetId: id,
+		editorId: _context.id,
+		placement: pastePlacement,
+		context,
+		metadata,
+	});
+	const applyPaste = (pastePlacement: Placement) => {
+		if (clipboard === null) return;
+		if (
+			clipboard.kind === 'cut' &&
+			(clipboard.sourceEditor.id !== _context.id || clipboard.sourceEditor.context !== context)
+		) {
+			setPasteOpen(false);
+			setPendingCrossDocumentPaste({ component: clipboard.component, placement: pastePlacement });
+			return;
+		}
+		const pasteError = getPasteError(pasteArgs(clipboard, pastePlacement));
+		if (pasteError !== null) {
+			toast.error(pasteError);
+			return;
+		}
+		_context.setComponents(
+			pasteComponent({ ...pasteArgs(clipboard, pastePlacement), createId: () => new ObjectId().toHexString() }),
+		);
+		if (clipboard.kind === 'cut') setClipboard(null);
+	};
+	const pastePendingAsCopy = (pending: PendingCrossDocumentPaste) => {
+		const copyClipboard: Exclude<ComponentClipboard, null> = {
+			kind: 'copy',
+			component: pending.component,
+		};
+		const pasteError = getPasteError(pasteArgs(copyClipboard, pending.placement));
+		if (pasteError !== null) {
+			toast.error(pasteError);
+			return;
+		}
+		_context.setComponents(
+			pasteComponent({
+				...pasteArgs(copyClipboard, pending.placement),
+				createId: () => new ObjectId().toHexString(),
+			}),
+		);
+		setClipboard(copyClipboard);
+		setPendingCrossDocumentPaste(null);
+	};
+	const dragArgs = (parentId: string | null, targetIndex: number) => ({
+		components: _context.components,
+		componentId: draggingId ?? '',
+		parentComponentId: parentId,
+		index: targetIndex,
+		context,
+		metadata,
+	});
+	const targetKey = (parentId: string | null, targetIndex: number) => `${parentId ?? 'root'}:${targetIndex}`;
+	const showDropzone = notNullish(draggingId) && isValidComponentDrop(dragArgs(id, 0));
+	const [slotBounds, setSlotBounds] = useState<{ before: CSSProperties; after: CSSProperties } | null>(null);
+	useLayoutEffect(() => {
+		if (draggingId === null) return;
+		const wrappers = new Map(
+			Array.from(document.querySelectorAll<HTMLElement>('[data-cms-editable-component]')).map((element) => [
+				element.dataset.cmsComponentId,
+				element,
+			]),
+		);
+		const siblingElements = siblings.flatMap((sibling) => {
+			const element = wrappers.get(sibling.id);
+			return element === undefined ? [] : [element];
+		});
+		if (siblingElements.length !== siblings.length) return;
+		const measure = () => {
+			const rects = siblingElements.map((element) => element.getBoundingClientRect());
+			setSlotBounds({
+				before: componentDropzoneBounds({ siblings: rects, index, anchorIndex: index }),
+				after: componentDropzoneBounds({ siblings: rects, index: index + 1, anchorIndex: index }),
+			});
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		for (const element of siblingElements) observer.observe(element);
+		return () => observer.disconnect();
+	}, [draggingId, siblings, index]);
+	const renderDropzone = (parentId: string | null, targetIndex: number, extraClass = '', style?: CSSProperties) => {
+		const args = dragArgs(parentId, targetIndex);
+		if (nullish(draggingId) || !isValidComponentDrop(args)) return null;
+		const key = targetKey(parentId, targetIndex);
+		return (
+			<div
+				key={key}
+				aria-hidden="true"
+				className={`absolute z-[60] ${extraClass}`}
+				style={style}
+				data-cms-dropzone={key}
+				data-cms-drop-active={dropTarget === key || undefined}
+				data-cms-dropzone-surface={
+					parentId === id && targetIndex === 0 && childComponents.length === 0 ? 'true' : undefined
+				}
+				onDragOver={(event) => {
+					event.preventDefault();
+					event.dataTransfer.dropEffect = 'move';
+					setDropTarget(key);
+				}}
+				onDragLeave={(event) => {
+					if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget))
+						setDropTarget(null);
+				}}
+				onDrop={(event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					_context.setComponents(moveComponent(args));
+					setDropTarget(null);
+					setDraggingId(null);
+				}}
+			/>
+		);
+	};
 
 	const firstChildId = firstChild?.id ?? null;
 	const prevSiblingId = prevSibling?.id ?? null;
@@ -415,18 +587,75 @@ export const EditableComponent = (props: EditableComponentProps) => {
 					setActiveId(id);
 				}}
 				className="relative isolate min-h-9 min-w-32 overflow-visible border border-dashed border-transparent transition-colors hover:z-20"
+				data-cms-drop-target={dropTarget?.startsWith(`${id}:`) === true || undefined}
 				data-cms-compact-controls={compactControls || undefined}
 				data-cms-editable-component
+				data-cms-component-id={id}
 				data-cms-active={isActive || undefined}
+				data-cms-paste-open={pasteOpen || undefined}
+				data-cms-cut={
+					(clipboard?.kind === 'cut' &&
+						clipboard.component.id === id &&
+						clipboard.sourceEditor.id === _context.id &&
+						clipboard.sourceEditor.context === context) ||
+					undefined
+				}
 				data-testid={`cms-editable-component-${id}`}
 			>
+				{renderDropzone(
+					parentComponentId,
+					index,
+					slotBounds === null ? 'top-0 left-0 h-2 w-full -translate-y-1/2' : '',
+					slotBounds?.before,
+				)}
+				{index === siblings.length - 1
+					? renderDropzone(
+							parentComponentId,
+							index + 1,
+							slotBounds === null ? 'bottom-0 left-0 h-2 w-full translate-y-1/2' : '',
+							slotBounds?.after,
+						)
+					: null}
+				{showDropzone && childComponents.length === 0 ? renderDropzone(id, 0, 'inset-0') : null}
 				{/* Anchored inside the top-left corner (mirroring the toolbar at top-right) so the
 				    pointer never leaves the hover area while reaching for it. The container
 				    ignores the pointer so only the buttons intercept clicks. */}
 				<div
-					className="pointer-events-none absolute top-0 left-0 z-40 hidden max-w-full flex-wrap items-center gap-1 p-1 text-xs"
+					className="pointer-events-none absolute top-0 left-0 z-40 hidden max-w-full items-center gap-1 p-1 text-xs"
 					data-cms-editor-control="navigator"
 				>
+					<Button
+						type="button"
+						variant="secondary"
+						size="sm"
+						draggable
+						aria-label={`Drag ${Component.label}`}
+						title={`Drag ${Component.label}`}
+						style={{ cursor: draggingId === id ? 'grabbing' : 'grab' }}
+						className={`pointer-events-auto ${controlButtonClass}`}
+						data-cms-editor-control="drag"
+						onMouseDown={(event) => {
+							if (event.button === 0) setDraggingId(id);
+						}}
+						onDragStart={(event) => {
+							const editable = event.currentTarget.closest('[data-cms-editable-component]');
+							if (!(editable instanceof HTMLElement)) {
+								event.preventDefault();
+								return;
+							}
+							event.dataTransfer.effectAllowed = 'move';
+							event.dataTransfer.setData('text/plain', id);
+							const rect = editable.getBoundingClientRect();
+							event.dataTransfer.setDragImage(editable, event.clientX - rect.left, event.clientY - rect.top);
+							setDraggingId(id);
+						}}
+						onDragEnd={() => {
+							setDraggingId(null);
+							setDropTarget(null);
+						}}
+					>
+						<Grip className="size-3" />
+					</Button>
 					<span className="bg-brand-1 text-brand-1-c rounded px-1.5 py-1 font-mono text-[10px] font-bold tracking-wider whitespace-nowrap uppercase shadow-md">
 						{Component.label}
 					</span>
@@ -504,6 +733,74 @@ export const EditableComponent = (props: EditableComponentProps) => {
 					data-cms-editor-control="toolbar"
 					data-testid="cms-editor-controls"
 				>
+					<Button
+						type="button"
+						size="sm"
+						variant="secondary"
+						className={controlButtonClass}
+						aria-label="Copy component"
+						title="Copy component"
+						onClick={() => {
+							const component = findComponent(_context.components, id);
+							if (notNullish(component)) setClipboard({ kind: 'copy', component: structuredClone(component) });
+						}}
+					>
+						<Copy className="size-3" />
+					</Button>
+					<Button
+						type="button"
+						size="sm"
+						variant="secondary"
+						className={controlButtonClass}
+						aria-label="Cut component"
+						title="Cut component"
+						onClick={() => {
+							const component = findComponent(_context.components, id);
+							if (notNullish(component)) {
+								setClipboard({
+									kind: 'cut',
+									component: structuredClone(component),
+									sourceEditor: { id: _context.id, context },
+								});
+							}
+						}}
+					>
+						<Scissors className="size-3" />
+					</Button>
+					<DropdownMenu open={pasteOpen} onOpenChange={setPasteOpen}>
+						<DropdownMenuTrigger asChild>
+							<Button
+								type="button"
+								size="sm"
+								variant="secondary"
+								className={controlButtonClass}
+								aria-label="Paste component"
+								title="Paste component"
+								disabled={clipboard === null}
+							>
+								<ClipboardPaste className="size-3" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							data-cms-editor-control="paste-menu"
+							align="end"
+							onCloseAutoFocus={(event) => {
+								if (pendingCrossDocumentPaste !== null) event.preventDefault();
+							}}
+						>
+							{pastePlacements
+								.filter(({ placement: pastePlacement }) => pastePlacement !== 'inside' || !Component.noChildren)
+								.map(({ placement: pastePlacement, label }) => (
+									<DropdownMenuItem
+										key={pastePlacement}
+										className="cursor-pointer"
+										onSelect={() => applyPaste(pastePlacement)}
+									>
+										{label}
+									</DropdownMenuItem>
+								))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 					{Component.noChildren ? null : (
 						<Button
 							size="sm"
@@ -511,7 +808,7 @@ export const EditableComponent = (props: EditableComponentProps) => {
 							className={controlButtonClass}
 							onClick={() => openNewComponent('inside')}
 						>
-							<PlusSquare className="mr-1 h-3 w-3" /> Child
+							<PlusSquare className="mr-1 h-3 w-3" /> Add Child
 						</Button>
 					)}
 					{Component.editable === false ? null : (
@@ -590,6 +887,27 @@ export const EditableComponent = (props: EditableComponentProps) => {
 					Add after
 				</Button>
 			</div>
+
+			{/* Confirm cross-document cut as copy */}
+			{pendingCrossDocumentPaste === null ? null : (
+				<Dialog open onOpenChange={() => setPendingCrossDocumentPaste(null)}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Paste as a copy?</DialogTitle>
+							<DialogDescription>
+								This component was cut from another document. Pasting it here creates a copy and leaves the original
+								unchanged.
+							</DialogDescription>
+						</DialogHeader>
+						<DialogFooter>
+							<Button variant="outline" onClick={() => setPendingCrossDocumentPaste(null)}>
+								Cancel
+							</Button>
+							<Button onClick={() => pastePendingAsCopy(pendingCrossDocumentPaste)}>Paste as copy</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+			)}
 
 			{/* Edit Dialog */}
 			<Dialog open={editOpen} onOpenChange={setEditOpen}>
