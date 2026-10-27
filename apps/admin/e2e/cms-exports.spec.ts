@@ -9,8 +9,14 @@ test.describe('Login Page', () => {
 			}
 		});
 
+		// A working client-side handler proves hydration without waiting for
+		// unrelated prefetches or background requests to become idle.
+		await page.route('**/api/auth/stormy?**', (route) =>
+			route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Sign in</title>' }),
+		);
 		await page.goto('/');
-		await page.waitForLoadState('networkidle');
+		await page.getByTestId('github-login-button').click();
+		await expect(page).toHaveURL(/\/api\/auth\/stormy\?action=signin&provider=github$/);
 
 		const hydrationErrors = consoleErrors.filter(
 			(e) => e.includes('Hydration') || e.includes('did not match') || e.includes('hydration'),

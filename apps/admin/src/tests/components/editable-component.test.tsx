@@ -407,7 +407,7 @@ describe('EditableComponent', () => {
 		const heading = component('h1', 'Heading', { text: 'Solo' });
 		pageCtx.components = [heading];
 		renderEditable(heading);
-		expect(within(screen.getByTestId('cms-editor-controls')).queryByText('Child')).not.toBeInTheDocument();
+		expect(within(screen.getByTestId('cms-editor-controls')).queryByText('Add Child')).not.toBeInTheDocument();
 	});
 
 	it('adds a child component through the add dialog', async () => {
@@ -415,7 +415,7 @@ describe('EditableComponent', () => {
 		pageCtx.components = [section];
 		renderEditable(section);
 
-		await userEvent.click(within(screen.getByTestId('cms-editor-controls')).getByRole('button', { name: /Child/ }));
+		await userEvent.click(within(screen.getByTestId('cms-editor-controls')).getByRole('button', { name: 'Add Child' }));
 		const palette = await screen.findByTestId('cms-add-component-palette');
 		await userEvent.click(within(palette).getByRole('button', { name: 'Heading' }));
 		await userEvent.click(screen.getByRole('button', { name: 'Add Component' }));
@@ -558,6 +558,45 @@ describe('AddComponentDialog', () => {
 			'after',
 			1,
 		);
+	});
+});
+
+describe('stale component controls', () => {
+	it('does not overwrite the clipboard after the rendered component has been removed from the tree', async () => {
+		const source = component('source', 'Text', { content: 'Source' });
+		pageCtx.components = [source];
+		renderEditable(source);
+		sessionStorage.setItem('stormycms:component-clipboard:v1', 'existing clipboard');
+		pageCtx.components = [];
+		await userEvent.click(screen.getByRole('button', { name: 'Copy component' }));
+		await userEvent.click(screen.getByRole('button', { name: 'Cut component' }));
+		expect(sessionStorage.getItem('stormycms:component-clipboard:v1')).toBe('existing clipboard');
+		sessionStorage.clear();
+	});
+
+	it('keeps dragging usable when a sibling has no rendered wrapper yet', () => {
+		const source = component('source', 'Text', { content: 'Source' });
+		pageCtx.components = [source, component('pending', 'Group')];
+		renderEditable(source);
+		const handle = screen.getByRole('button', { name: 'Drag Text' });
+		fireEvent.mouseDown(handle, { button: 2 });
+		expect(handle).toHaveStyle({ cursor: 'grab' });
+		fireEvent.dragStart(handle, { dataTransfer: { setData: vi.fn(), setDragImage: vi.fn(), effectAllowed: '' } });
+		expect(handle).toHaveStyle({ cursor: 'grabbing' });
+		fireEvent.dragEnd(handle);
+		expect(handle).toHaveStyle({ cursor: 'grab' });
+	});
+
+	it('cancels a drag if its handle has lost its editable wrapper', () => {
+		const source = component('source', 'Text', { content: 'Source' });
+		pageCtx.components = [source];
+		renderEditable(source);
+		const handle = screen.getByRole('button', { name: 'Drag Text' });
+		const closest = vi.spyOn(handle, 'closest').mockReturnValue(null);
+		const setDragImage = vi.fn();
+		expect(fireEvent.dragStart(handle, { dataTransfer: { setDragImage } })).toBe(false);
+		expect(setDragImage).not.toHaveBeenCalled();
+		closest.mockRestore();
 	});
 });
 

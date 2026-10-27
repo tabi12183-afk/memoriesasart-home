@@ -23,7 +23,7 @@ test.describe('Page editor component palette', () => {
 		await sectionEditor.hover();
 		await sectionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Text');
 		await expect(page.locator('textarea[name="content"]')).toHaveValue('Add body copy.');
@@ -55,7 +55,7 @@ test.describe('Page editor component palette', () => {
 		await expect(imageEditor).toBeVisible();
 		await imageEditor.hover();
 		const imageControls = imageEditor.locator(':scope > [data-testid="cms-editor-controls"]');
-		await expect(imageControls.getByRole('button', { name: /Child/ })).toHaveCount(0);
+		await expect(imageControls.getByRole('button', { name: 'Add Child', exact: true })).toHaveCount(0);
 	});
 
 	test('content editor selects an external image with accessible metadata for an image field', async ({ page }) => {
@@ -108,7 +108,7 @@ test.describe('Page editor component palette', () => {
 		await groupEditor.hover();
 		await groupEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Call to Action');
 		await addSelectedComponent(page, 'CallToAction');
@@ -162,7 +162,7 @@ test.describe('Page editor component palette', () => {
 		await groupEditor.hover();
 		await groupEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Call to Action');
 		await addSelectedComponent(page, 'CallToAction');
@@ -198,7 +198,7 @@ test.describe('Page editor component palette', () => {
 		await regionEditor.hover();
 		await regionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await expect(palette.getByRole('button', { name: 'Region Header', exact: true })).toBeVisible();
 		await expect(palette.getByRole('button', { name: 'Outlet', exact: true })).toHaveCount(0);
@@ -211,7 +211,7 @@ test.describe('Page editor component palette', () => {
 		await mainEditor.hover();
 		await mainEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Call to Action');
 		await addSelectedComponent(page, 'CallToAction');
@@ -222,7 +222,7 @@ test.describe('Page editor component palette', () => {
 		await ctaEditor.hover();
 		const ctaControls = ctaEditor.locator(':scope > [data-testid="cms-editor-controls"]');
 		await expect(ctaControls.getByRole('button', { name: /Edit/ })).toBeVisible();
-		await expect(ctaControls.getByRole('button', { name: /Child/ })).toHaveCount(0);
+		await expect(ctaControls.getByRole('button', { name: 'Add Child', exact: true })).toHaveCount(0);
 	});
 
 	test('content editor can select an obscured ancestor to keep nesting components', async ({ page }) => {
@@ -234,7 +234,7 @@ test.describe('Page editor component palette', () => {
 		await regionEditor.hover();
 		await regionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Region Main');
 		await addSelectedComponent(page, 'RegionMain');
@@ -246,7 +246,7 @@ test.describe('Page editor component palette', () => {
 
 		await regionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Region Footer');
 		await addSelectedComponent(page, 'RegionFooter');
@@ -263,7 +263,7 @@ test.describe('Page editor component palette', () => {
 		await regionEditor.hover();
 		await regionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Region Header');
 		await addSelectedComponent(page, 'RegionHeader');
@@ -275,7 +275,7 @@ test.describe('Page editor component palette', () => {
 		await page.keyboard.press('ArrowUp');
 		await regionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await expect(palette.getByRole('button', { name: 'Region Header', exact: true })).toHaveCount(0);
 		await expect(palette.getByRole('button', { name: 'Region Aside', exact: true })).toBeVisible();
@@ -292,7 +292,7 @@ test.describe('Page editor component palette', () => {
 		await groupEditor.hover();
 		await groupEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Heading');
 		await addSelectedComponent(page, 'Heading');
@@ -329,7 +329,7 @@ test.describe('Page editor component palette', () => {
 		await regionEditor.hover();
 		await regionEditor
 			.locator(':scope > [data-testid="cms-editor-controls"]')
-			.getByRole('button', { name: /Child/ })
+			.getByRole('button', { name: 'Add Child', exact: true })
 			.click();
 		await chooseComponent(page, 'Region Main');
 		await addSelectedComponent(page, 'RegionMain');

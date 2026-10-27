@@ -8,7 +8,6 @@ export async function authenticate(page: Page) {
 export async function openEmptyPage(page: Page) {
 	await authenticate(page);
 	await page.goto('/pages/69c9ee40daa567bccfc45e19');
-	await page.waitForLoadState('networkidle');
 	await page.getByRole('button', { name: 'Add Your First Component' }).click();
 	await expect(page.getByRole('dialog')).toBeVisible();
 }
@@ -25,7 +24,6 @@ export async function addSelectedComponent(page: Page, componentName?: string) {
 		const renderedComponent = page.locator(`[data-testid="cms-component-${componentName.toLowerCase()}"]`);
 		await expect(renderedComponent).toBeAttached({ timeout: 15_000 });
 		await expect(editableComponent(page, componentName)).toBeVisible();
-		await page.waitForLoadState('networkidle');
 	}
 }
 
