@@ -78,7 +78,7 @@ describe('GET /api/media', () => {
 		cmsClient.getMediaItems.mockResolvedValue([{ id: 'm1' }]);
 		const response = await GET();
 		expect(response.status).toBe(200);
-		await expect(response.json()).resolves.toEqual({ media: [{ id: 'm1' }] });
+		await expect(response.json()).resolves.toEqual({ media: [{ id: 'm1' }], uploads: false });
 		expect(cmsClient.getMediaItems).toHaveBeenCalledWith({ limit: 100, offset: 0 });
 	});
 
@@ -86,7 +86,21 @@ describe('GET /api/media', () => {
 		cmsClient.getMediaItems.mockRejectedValue(new Error('down'));
 		const response = await GET();
 		expect(response.status).toBe(200);
-		await expect(response.json()).resolves.toEqual({ media: [] });
+		await expect(response.json()).resolves.toEqual({ media: [], uploads: false });
+	});
+
+	it('tells the editor that uploads work once media storage is configured', async () => {
+		stubS3Env();
+		cmsClient.getMediaItems.mockResolvedValue([]);
+		await expect((await GET()).json()).resolves.toMatchObject({ uploads: true });
+	});
+
+	it('tells the editor that uploads are off while storage still has the .env.example placeholders', async () => {
+		vi.stubEnv('S3_BUCKET', 'your-media-bucket');
+		vi.stubEnv('S3_ACCESS_KEY_ID', 'your-access-key');
+		vi.stubEnv('S3_SECRET_ACCESS_KEY', 'your-secret-key');
+		cmsClient.getMediaItems.mockResolvedValue([]);
+		await expect((await GET()).json()).resolves.toMatchObject({ uploads: false });
 	});
 });
 
@@ -176,6 +190,19 @@ describe('POST /api/media', () => {
 		['secret', ['S3_BUCKET', 'S3_ACCESS_KEY_ID']],
 	])('treats storage as unconfigured when the %s is missing', async (_name, presentVars) => {
 		for (const envVar of presentVars) vi.stubEnv(envVar, 'value');
+		const response = await POST(
+			postForm({ file: { filename: 'x.png', type: 'image/png', content: 'x' } satisfies FormFile }),
+		);
+		expect(response.status).toBe(503);
+	});
+
+	it.each([
+		['the .env.example placeholders', 'your-media-bucket'],
+		['empty values', ''],
+	])('treats storage as unconfigured when it has %s', async (_name, bucket) => {
+		vi.stubEnv('S3_BUCKET', bucket);
+		vi.stubEnv('S3_ACCESS_KEY_ID', 'key');
+		vi.stubEnv('S3_SECRET_ACCESS_KEY', 'secret');
 		const response = await POST(
 			postForm({ file: { filename: 'x.png', type: 'image/png', content: 'x' } satisfies FormFile }),
 		);

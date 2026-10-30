@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
-import { Plus, X } from 'lucide-react';
+import { Plus, TriangleAlert, X } from 'lucide-react';
 import type { MediaItem } from '@stormycms/core';
 import type { FileMetadata } from './dropzone';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
@@ -263,6 +263,8 @@ function UrlInput({
 	);
 }
 
+const GRID_COLUMNS: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
+
 export function MediaLibrary({
 	media: externalMedia,
 	mediaType,
@@ -274,6 +276,8 @@ export function MediaLibrary({
 	renderTrigger,
 }: MediaLibraryProps) {
 	const [internalMedia, setInternalMedia] = useState<MediaItem[]>([]);
+	// Off until /api/media confirms storage, so the Upload tab never offers an upload that cannot work.
+	const [uploads, setUploads] = useState(false);
 	const isControlled = notNullish(externalMedia);
 	const media = isControlled ? externalMedia : internalMedia;
 
@@ -287,7 +291,14 @@ export function MediaLibrary({
 					throw new Error('Failed to fetch media');
 				}
 				const data = await response.json();
+				const _uploads = data.uploads === true;
 				setInternalMedia(data.media ?? []);
+				setUploads(_uploads);
+				if (!_uploads) {
+					console.warn(
+						'Uploads are disabled. Set S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in your environment.',
+					);
+				}
 			} catch (error) {
 				console.error('Error fetching media:', error);
 			}
@@ -298,6 +309,8 @@ export function MediaLibrary({
 
 	const [addOpen, setAddOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState('upload');
+	const tab = uploads || activeTab !== 'upload' ? activeTab : 'url';
+	const tabCount = (uploads ? 1 : 0) + 1 + (showLibraryTab ? 1 : 0);
 
 	const handleAdd = () => {
 		/* v8 ignore next -- @preserve */
@@ -383,22 +396,32 @@ export function MediaLibrary({
 					<DialogHeader className="shrink-0">
 						<DialogTitle>Add Media</DialogTitle>
 					</DialogHeader>
-					<Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-						<TabsList className={`grid w-full shrink-0 ${showLibraryTab ? 'grid-cols-3' : 'grid-cols-2'}`}>
-							<TabsTrigger value="upload">Upload</TabsTrigger>
+					<Tabs value={tab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+						<TabsList className={`grid w-full shrink-0 ${GRID_COLUMNS[tabCount]}`}>
+							{uploads ? <TabsTrigger value="upload">Upload</TabsTrigger> : null}
 							<TabsTrigger value="url">URL</TabsTrigger>
 							{showLibraryTab ? <TabsTrigger value="library">Library</TabsTrigger> : null}
 						</TabsList>
-						<TabsContent value="upload" className="mt-4 flex-1 flex flex-col min-h-0 overflow-auto">
-							<Dropzone
-								mediaType={mediaType}
-								multiSelect={multiSelect}
-								onFileUpload={async (file, metadata) => {
-									console.log('[MediaLibrary] onFileUpload:', file.name, file.size, file.type);
-									await handleFileUpload(file, metadata);
-								}}
-							/>
-						</TabsContent>
+						{uploads ? (
+							<TabsContent value="upload" className="mt-4 flex-1 flex flex-col min-h-0 overflow-auto">
+								<Dropzone
+									mediaType={mediaType}
+									multiSelect={multiSelect}
+									onFileUpload={async (file, metadata) => {
+										console.log('[MediaLibrary] onFileUpload:', file.name, file.size, file.type);
+										await handleFileUpload(file, metadata);
+									}}
+								/>
+							</TabsContent>
+						) : (
+							<div
+								role="status"
+								className="mt-3 flex shrink-0 items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50/60 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200"
+							>
+								<TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+								<p>Uploading is off until media storage is set up. You can still add media via URL.</p>
+							</div>
+						)}
 						<TabsContent value="url" className="mt-4 flex-1 flex flex-col min-h-0 overflow-auto">
 							<UrlInput
 								multiSelect={multiSelect}
@@ -430,7 +453,7 @@ export function MediaLibrary({
 					) : (
 						<Button type="button" onClick={handleAdd}>
 							<Plus className="mr-2 h-4 w-4" />
-							{selectionMode ? 'Choose Media' : showLibraryTab ? 'Add Media' : 'Upload Media'}
+							{selectionMode ? 'Choose Media' : showLibraryTab || !uploads ? 'Add Media' : 'Upload Media'}
 						</Button>
 					)}
 				</div>

@@ -43,15 +43,15 @@ beforeEach(() => {
 });
 
 const openDialog = async (label: RegExp) => {
-	await userEvent.click(screen.getByRole('button', { name: label }));
+	await userEvent.click(await screen.findByRole('button', { name: label }));
 	expect(await screen.findByRole('dialog')).toBeInTheDocument();
 };
 
 describe('MediaLibrary (uncontrolled)', () => {
 	it('fetches the library and uploads a file successfully', async () => {
 		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [mediaItem('existing')] }) })
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: mediaItem('uploaded') }) });
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [mediaItem('existing')] }) })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: mediaItem('uploaded') }) });
 		const onSelect = vi.fn();
 		const onUpload = vi.fn();
 
@@ -71,7 +71,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 
 	it('surfaces upload failures as error toasts', async () => {
 		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
 			.mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Storage offline' }) });
 
 		render(<MediaLibrary showLibraryTab={false} />);
@@ -87,7 +87,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 
 	it('reports uploads that return no media', async () => {
 		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
 			.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
 		render(<MediaLibrary showLibraryTab={false} />);
@@ -101,12 +101,14 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('reports uploads whose response JSON cannot be parsed', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) }).mockResolvedValueOnce({
-			ok: true,
-			json: async () => {
-				throw new Error('bad json');
-			},
-		});
+		fetchMock
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => {
+					throw new Error('bad json');
+				},
+			});
 
 		render(<MediaLibrary showLibraryTab={false} />);
 		await openDialog(/Upload Media/);
@@ -120,7 +122,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 
 	it('reports upload failures that are not Error instances', async () => {
 		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
 			.mockRejectedValueOnce('network failure');
 
 		render(<MediaLibrary showLibraryTab={false} />);
@@ -135,8 +137,8 @@ describe('MediaLibrary (uncontrolled)', () => {
 
 	it('creates URL media through the URL tab', async () => {
 		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) })
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: mediaItem('from-url') }) });
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: mediaItem('from-url') }) });
 		const onSelect = vi.fn();
 		const onUpload = vi.fn();
 
@@ -163,7 +165,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 
 	it('reports URL creation failures that are not Error instances', async () => {
 		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
 			.mockRejectedValueOnce('bad request');
 
 		render(<MediaLibrary />);
@@ -177,12 +179,14 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('reports URL creation failures and keeps the dialog open', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) }).mockResolvedValueOnce({
-			ok: false,
-			json: async () => {
-				throw new Error('bad json');
-			},
-		});
+		fetchMock
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
+			.mockResolvedValueOnce({
+				ok: false,
+				json: async () => {
+					throw new Error('bad json');
+				},
+			});
 
 		render(<MediaLibrary />);
 		await openDialog(/Add Media/);
@@ -197,7 +201,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('falls back to the full URL when the path has no filename', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) });
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) });
 		render(<MediaLibrary />);
 		await openDialog(/Add Media/);
 		await userEvent.click(screen.getByRole('tab', { name: 'URL' }));
@@ -208,7 +212,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('manages URL entries: single-select replacement, remove, and clear all', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) });
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) });
 		render(<MediaLibrary />);
 		await openDialog(/Add Media/);
 		await userEvent.click(screen.getByRole('tab', { name: 'URL' }));
@@ -236,7 +240,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('edits metadata for one of several URL entries', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) });
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) });
 		render(<MediaLibrary multiSelect />);
 		await openDialog(/Add Media/);
 		await userEvent.click(screen.getByRole('tab', { name: 'URL' }));
@@ -273,7 +277,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('clears multiple URLs with Clear All in multi-select mode', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) });
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) });
 		render(<MediaLibrary multiSelect />);
 		await openDialog(/Add Media/);
 		await userEvent.click(screen.getByRole('tab', { name: 'URL' }));
@@ -290,7 +294,7 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('selects existing media from the library tab', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [mediaItem('lib1')] }) });
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [mediaItem('lib1')] }) });
 		const onSelect = vi.fn();
 		render(<MediaLibrary onSelect={onSelect} />);
 		await openDialog(/Add Media/);
@@ -324,10 +328,36 @@ describe('MediaLibrary (uncontrolled)', () => {
 	});
 
 	it('uses a custom trigger when provided', async () => {
-		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ media: [] }) });
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) });
 		render(<MediaLibrary renderTrigger={(onClick) => <button onClick={onClick}>Custom trigger</button>} />);
 		await userEvent.click(screen.getByRole('button', { name: 'Custom trigger' }));
 		expect(await screen.findByRole('dialog')).toBeInTheDocument();
+	});
+});
+
+describe('MediaLibrary without media storage', () => {
+	it('offers only the URL tab, and says why', async () => {
+		fetchMock.mockResolvedValue({ ok: true, json: async () => ({ media: [], uploads: false }) });
+
+		render(<MediaLibrary showLibraryTab={false} />);
+		await openDialog(/Add Media/);
+
+		expect(screen.queryByRole('tab', { name: 'Upload' })).not.toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'URL' })).toHaveAttribute('aria-selected', 'true');
+		expect(document.getElementById('dropzone-file')).toBeNull();
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Uploading is off until media storage is set up. You can still add media via URL.',
+		);
+	});
+
+	it('keeps upload hidden when the library cannot be reached to confirm storage', async () => {
+		fetchMock.mockRejectedValue(new Error('offline'));
+
+		render(<MediaLibrary selectionMode />);
+		await openDialog(/Choose Media/);
+
+		expect(screen.queryByRole('tab', { name: 'Upload' })).not.toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'URL' })).toHaveAttribute('aria-selected', 'true');
 	});
 });
 

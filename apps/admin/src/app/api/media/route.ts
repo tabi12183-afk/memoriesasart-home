@@ -5,11 +5,18 @@ import { notNullish, nullish } from '~/lib/utils';
 
 class MediaStorageConfigurationError extends Error {}
 
+/** Unset, empty, or still the .env.example placeholder, which `stormy init` copies in. */
+const isUnset = (value: string | undefined): value is undefined =>
+	nullish(value) || value.trim() === '' || value.startsWith('your-');
+
+const isStorageConfigured = () =>
+	![process.env.S3_BUCKET, process.env.S3_ACCESS_KEY_ID, process.env.S3_SECRET_ACCESS_KEY].some(isUnset);
+
 function getS3Client(): S3StorageClient {
 	const bucket = process.env.S3_BUCKET;
 	const accessKeyId = process.env.S3_ACCESS_KEY_ID;
 	const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-	if (nullish(bucket) || nullish(accessKeyId) || nullish(secretAccessKey)) {
+	if (isUnset(bucket) || isUnset(accessKeyId) || isUnset(secretAccessKey)) {
 		throw new MediaStorageConfigurationError(
 			'Media storage is not configured. Set S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY.',
 		);
@@ -25,7 +32,7 @@ function getS3Client(): S3StorageClient {
 }
 
 /**
- * GET /api/media - Get all media items from Stormy CMS server
+ * GET /api/media - Get all media items from Stormy CMS server, and whether uploads to storage can work
  */
 export async function GET() {
 	try {
@@ -33,10 +40,10 @@ export async function GET() {
 		const media = await stormyCMSClient.getMediaItems({ limit: 100, offset: 0 });
 
 		console.log('[API/media] Listed', media.length, 'media items from Stormy CMS');
-		return NextResponse.json({ media }, { status: 200 });
+		return NextResponse.json({ media, uploads: isStorageConfigured() }, { status: 200 });
 	} catch (error) {
 		console.error('[API/media] Get media error:', error);
-		return NextResponse.json({ media: [] }, { status: 200 });
+		return NextResponse.json({ media: [], uploads: isStorageConfigured() }, { status: 200 });
 	}
 }
 
