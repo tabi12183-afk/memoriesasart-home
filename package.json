@@ -26,7 +26,8 @@
 		"format:fix": "turbo format:fix --affected",
 		"typecheck": "turbo typecheck",
 		"test": "turbo test",
-		"test:e2e": "turbo test:e2e"
+		"test:e2e": "turbo test:e2e",
+		"init:env": "pnpm -r init:env"
 	},
 	"dependencies": {
 		"@stormycms/cli": "^0.0.22",
