@@ -6,7 +6,7 @@ import nextVitals from 'eslint-config-next/core-web-vitals';
 import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';
 
 export default defineConfig([
-	globalIgnores(['**/.next/**', '**/.next-e2e*/**', '**/dist/**', '**/coverage/**']),
+	globalIgnores(['**/.next*/**', '**/dist/**', '**/coverage/**']),
 
 	// Next.js core web vitals
 	nextVitals,
