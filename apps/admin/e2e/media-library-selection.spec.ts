@@ -4,6 +4,16 @@ import { addSelectedComponent, authenticate, chooseComponent, editableComponent,
 test.describe('Media Library Selection', () => {
 	test('content editor can re-select the same file after clearing it', async ({ page }) => {
 		await authenticate(page);
+		// The Upload tab only renders once /api/media confirms S3 storage, which a fresh site has not set up.
+		await page.route('**/api/media', (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({ media: [], uploads: true }),
+					})
+				: route.fallback(),
+		);
 		await page.goto('/media');
 		await page.getByRole('button', { name: 'Upload Media' }).click();
 

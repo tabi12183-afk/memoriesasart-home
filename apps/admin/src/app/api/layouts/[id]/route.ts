@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 /**
  * DELETE /api/layouts/[id] - Delete a layout
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	const jwt = await getJWT();
 	if (nullish(jwt)) {
 		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
