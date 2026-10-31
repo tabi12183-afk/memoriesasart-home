@@ -15,6 +15,27 @@ vi.mock('~/stormy-cms-client', () => ({
 
 vi.mock('next/navigation', () => ({ redirect }));
 
+vi.mock('components', () => ({
+	default: {},
+	MemoriesPortfolio: ({ pagePath }: { pagePath: string }) => (
+		<div data-testid="photography-default" data-path={pagePath} />
+	),
+	memoriesPages: {
+		'/': {
+			title: 'Greensburg PA Photographer | Memories as Art',
+			description: 'Portrait, wedding, and commercial photography.',
+			image: '/assets/home.webp',
+			preview: false,
+		},
+		'/portraits/boudoir/': {
+			title: 'Greensburg PA Boudoir Photography | Memories as Art',
+			description: 'Personal portraits.',
+			image: '/assets/boudoir.webp',
+			preview: false,
+		},
+	},
+}));
+
 vi.mock('@stormycms/core', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@stormycms/core')>()),
 	mapPageData: vi.fn((page) => page),
@@ -59,6 +80,41 @@ describe('generateMetadata', () => {
 			description: 'Description for about',
 		});
 	});
+
+	it('uses photography metadata for an approved page with no CMS content', async () => {
+		getPageBySlug.mockResolvedValue(null);
+		await expect(generateMetadata(params(['portraits', 'boudoir']))).resolves.toMatchObject({
+			title: 'Greensburg PA Boudoir Photography | Memories as Art',
+			description: 'Personal portraits.',
+		});
+	});
+
+	it('uses photography metadata for an empty approved CMS page', async () => {
+		getPageBySlug.mockResolvedValue(cmsPage(''));
+		await expect(generateMetadata(params())).resolves.toMatchObject({
+			title: 'Greensburg PA Photographer | Memories as Art',
+		});
+	});
+
+	it('also treats absent component data as an empty approved page', async () => {
+		getPageBySlug.mockResolvedValue({ ...cmsPage(''), components: undefined });
+		await expect(generateMetadata(params())).resolves.toMatchObject({
+			title: 'Greensburg PA Photographer | Memories as Art',
+		});
+	});
+
+	it('keeps populated CMS metadata ahead of curated defaults', async () => {
+		getPageBySlug.mockResolvedValue({ ...cmsPage(''), components: [{ id: 'authored-component' }] });
+		await expect(generateMetadata(params())).resolves.toEqual({
+			title: 'Title for ',
+			description: 'Description for ',
+		});
+	});
+
+	it('does not hide CMS failures behind default metadata', async () => {
+		getPageBySlug.mockRejectedValue(new Error('CMS unavailable'));
+		await expect(generateMetadata(params())).rejects.toThrow('CMS unavailable');
+	});
 });
 
 describe('Page', () => {
@@ -89,5 +145,38 @@ describe('Page', () => {
 
 		getPageBySlug.mockResolvedValueOnce(edited('After the edit'));
 		await expect(generateMetadata(params(['edited']))).resolves.toMatchObject({ title: 'After the edit' });
+	});
+
+	it('renders an approved photography portfolio when it has no CMS page', async () => {
+		getPageBySlug.mockResolvedValue(null);
+		const html = renderToStaticMarkup(await Page(params(['portraits', 'boudoir'])));
+		expect(html).toContain('data-testid="photography-default"');
+		expect(html).toContain('data-path="/portraits/boudoir/"');
+		expect(redirect).not.toHaveBeenCalled();
+	});
+
+	it('renders curated home content for an empty CMS home page', async () => {
+		getPageBySlug.mockResolvedValue(cmsPage(''));
+		const html = renderToStaticMarkup(await Page(params()));
+		expect(html).toContain('data-testid="photography-default"');
+		expect(html).toContain('data-path="/"');
+	});
+
+	it('renders curated home content when component data is absent', async () => {
+		getPageBySlug.mockResolvedValue({ ...cmsPage(''), components: undefined });
+		const html = renderToStaticMarkup(await Page(params()));
+		expect(html).toContain('data-testid="photography-default"');
+	});
+
+	it('keeps an authored approved page ahead of curated defaults', async () => {
+		getPageBySlug.mockResolvedValue({ ...cmsPage(''), components: [{ id: 'authored-component' }] });
+		const html = renderToStaticMarkup(await Page(params()));
+		expect(html).toContain('data-testid="component-tree"');
+		expect(html).not.toContain('data-testid="photography-default"');
+	});
+
+	it('does not hide CMS failures behind default content', async () => {
+		getPageBySlug.mockRejectedValue(new Error('CMS unavailable'));
+		await expect(Page(params())).rejects.toThrow('CMS unavailable');
 	});
 });

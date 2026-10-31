@@ -15,6 +15,7 @@ describe('CMS exports map', () => {
 				'Hero',
 				'Image',
 				'Navigation',
+				'MemoriesPortfolio',
 				'Outlet',
 				'Region',
 				'RegionAside',
@@ -72,6 +73,24 @@ describe('CMS exports map', () => {
 		expect(cmsExports.RegionAside.unique).toBe(true);
 		expect(cmsExports.RegionMain.unique).toBe(true);
 		expect(cmsExports.RegionFooter.unique).toBe(true);
+	});
+
+	it('preserves the photography CMS content contract and permits Section placement', () => {
+		expect(cmsExports.MemoriesPortfolio.fields?.map((field) => field.prop)).toEqual([
+			'pagePath',
+			'heading',
+			'intro',
+			'heroImage',
+			'heroVideo',
+			'galleryImages',
+			'clientGalleryUrl',
+		]);
+		expect(cmsExports.Section.validChildren).toContain('MemoriesPortfolio');
+		expect(cmsExports.MemoriesPortfolio.noChildren).toBe(true);
+		expect(cmsExports.MemoriesPortfolio.fields?.find((field) => field.prop === 'pagePath')).toMatchObject({
+			field: 'select',
+			options: expect.arrayContaining(['/portraits/boudoir/']),
+		});
 	});
 
 	it('wraps renderable components that still render', () => {

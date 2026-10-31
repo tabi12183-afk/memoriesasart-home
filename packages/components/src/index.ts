@@ -7,6 +7,13 @@ import { Heading } from './lib/heading';
 import { Hero } from './lib/hero';
 import { Image } from './lib/image';
 import { Navigation } from './lib/navigation';
+import { MemoriesPortfolio } from './lib/photography/memories-portfolio';
+import { memoriesPagePaths } from './lib/photography/content';
+
+export { MemoriesPortfolio, safeMediaUrl } from './lib/photography/memories-portfolio';
+export type { MemoriesPortfolioProps } from './lib/photography/memories-portfolio';
+export { photographyContent, memoriesPages, memoriesPagePaths } from './lib/photography/content';
+export type { MemoriesPage, PhotographyContent } from './lib/photography/content';
 import { Region, RegionAside, RegionFooter, RegionHeader, RegionMain } from './lib/region';
 import { RichText } from './lib/rich-text';
 import { Section } from './lib/section';
@@ -15,6 +22,28 @@ import { Text } from './lib/text';
 import { ThemeToggle } from './lib/theme-toggle';
 
 export default {
+	MemoriesPortfolio: withCMS(
+		{
+			export: 'MemoriesPortfolio',
+			label: 'Memories as Art Portfolio',
+			fields: [
+				{ prop: 'pagePath', label: 'Page collection', field: 'select', options: memoriesPagePaths, defaultValue: '/' },
+				{ prop: 'heading', label: 'Heading', field: 'input', defaultValue: '' },
+				{ prop: 'intro', label: 'Introduction', field: 'textarea', defaultValue: '' },
+				{ prop: 'heroImage', label: 'Hero photograph or video poster', field: 'image', defaultValue: '' },
+				{ prop: 'heroVideo', label: 'Hero video URL', field: 'input', defaultValue: '' },
+				{
+					prop: 'galleryImages',
+					label: 'Gallery photographs (URL | description, one per line)',
+					field: 'textarea',
+					defaultValue: '',
+				},
+				{ prop: 'clientGalleryUrl', label: 'Client gallery provider URL', field: 'input', defaultValue: '' },
+			],
+			noChildren: true,
+		},
+		MemoriesPortfolio,
+	),
 	Group: withCMS(
 		{
 			export: 'Group',
@@ -46,6 +75,7 @@ export default {
 				},
 			],
 			validChildren: [
+				'MemoriesPortfolio',
 				'Heading',
 				'Text',
 				'RichText',

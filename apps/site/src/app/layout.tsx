@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: 'My Stormy Site',
-	description: 'A website built with Stormy CMS',
+	title: 'Memories as Art Photography | Greensburg PA',
+	description: 'Portrait, wedding, and commercial photography in Greensburg, Westmoreland County, and Pittsburgh.',
 };
 
 /**

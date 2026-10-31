@@ -17,3 +17,8 @@ playwright/.cache/
 
 # Coverage
 coverage/
+
+# Generated photography adapter and Python caches
+.preview-renderer/
+__pycache__/
+*.py[cod]
