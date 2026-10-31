@@ -180,4 +180,20 @@ When the user asks you to preview, test, or fix the configured app, ordinary bro
 
 For local verification that does not require real content, prefer existing test fixtures. Unit tests supply dummy credentials and mocks. The admin has a mock client at `apps/admin/src/lib/stormy-cms-client.mock.ts`; the Playwright configuration and `apps/admin/e2e/helpers.ts` set up the test server and authentication bypass. Reuse that setup for admin tests, and keep authentication bypasses confined to local testing. The public site has a separate client, so do not assume the admin's mock setup applies to it.
 
-There are not yet any AI integrations for directly authoring CMS content. A request to create a reusable component normally means changing its code and registration; populating real pages with that component is a separate content action.
+A request to create a reusable component normally means changing its code and registration; populating real pages with that component is a separate content action.
+
+## Authoring Content with the Stormy CMS MCP Server
+
+Stormy CMS has an MCP server for reading and editing a site's pages, layouts, and media directly. The user connects it to their AI client, signs in, and approves one site in the account portal; every tool then acts on that site only, with the user's own role on it. For example, in Claude Code:
+
+```bash
+claude mcp add --transport http stormy https://api.stormycms.com/mcp
+```
+
+When its tools are available, use them for content work rather than scripts or direct API calls with the project's credentials. If they are not available, say so and suggest connecting the server instead of working around it.
+
+- Read the server's guide with `get_stormy_guide` before the first change. It explains the component format and the rules for pages, layouts, and media.
+- There are no drafts or staging content yet: every create, update, or delete is written directly to the live site. Ensure the user understands the consequences of modifying production content before proceeding; only write directly to production with explicit consent.
+- Component names and props must match the registration map in `packages/components/src/index.ts`. The API stores whatever it is sent, so a misspelled name or prop shows up broken on the live site.
+- The local code may be ahead of what is deployed. Before placing a component that might exist only locally, tell the user: the live site cannot render a component it does not have yet.
+- After a change, inspect the rendered page as described above and give the user its address.
