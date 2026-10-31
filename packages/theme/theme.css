@@ -127,3 +127,15 @@
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
 }
+
+/* Photography branding is shared with the embedded editor, without changing
+   the admin shell or the semantics of the generic CMS components. */
+.site-root__html {
+	--maa-paper: #f3e8e1;
+	--maa-surface: #faf5ef;
+	--maa-ink: #383c3b;
+	--maa-accent: #4d737d;
+	--maa-line: #d9c9bf;
+	--maa-serif: 'Cormorant Garamond', Georgia, serif;
+	--maa-sans: 'Manrope', Arial, sans-serif;
+}

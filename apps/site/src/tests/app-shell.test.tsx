@@ -28,8 +28,10 @@ describe('RootLayout', () => {
 	});
 
 	it('describes the site in its metadata', () => {
-		expect(metadata.title).toBe('My Stormy Site');
-		expect(metadata.description).toBe('A website built with Stormy CMS');
+		expect(metadata.title).toBe('Memories as Art Photography | Greensburg PA');
+		expect(metadata.description).toBe(
+			'Portrait, wedding, and commercial photography in Greensburg, Westmoreland County, and Pittsburgh.',
+		);
 	});
 });
 

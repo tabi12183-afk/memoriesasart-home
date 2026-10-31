@@ -1,0 +1,24 @@
+name: Copy the published photography site
+on:
+  push:
+    branches: [tabis-branch]
+    paths:
+      - '.github/workflows/copy-published-site.yml'
+      - '.github/scripts/copy-published-site.py'
+      - '.github/site-copy-manifest.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  copy:
+    if: github.ref == 'refs/heads/tabis-branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out only the requested backup branch
+        run: git clone --depth 1 --branch tabis-branch "https://github.com/$GITHUB_REPOSITORY.git" backup
+      - name: Copy exact published assets and verify their hashes
+        working-directory: backup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/copy-published-site.py

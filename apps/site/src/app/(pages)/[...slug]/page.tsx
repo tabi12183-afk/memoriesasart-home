@@ -5,6 +5,7 @@ import { ComponentTree, LayoutTree } from '@stormycms/react/cms';
 import cmsExports from 'components';
 import { stormyCMSClient } from '~/stormy-cms-client';
 import { buildLayoutTree } from '@stormycms/react/cms';
+import { getMemoriesDefault, MemoriesDefault, memoriesMetadata } from '~/memories-defaults';
 
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
@@ -18,7 +19,12 @@ const getPageBySlug = cache(async (slug: string): Promise<CMSPageData | null> =>
 const getPage = (slug?: string[]) => getPageBySlug(slug?.join('/') ?? '');
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string[] }> }) {
-	const page = await getPage((await params).slug);
+	const slug = (await params).slug;
+	const page = await getPage(slug);
+	if ((page?.components?.length ?? 0) === 0) {
+		const metadata = memoriesMetadata(slug);
+		if (metadata !== undefined) return metadata;
+	}
 	if (page === null) {
 		return {
 			title: 'Page Not Found',
@@ -37,7 +43,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  * @returns The Dynamically rendered page content
  */
 export default async function Page({ params }: { params: Promise<{ slug: string[] }> }) {
-	const page = await getPage((await params).slug);
+	const slug = (await params).slug;
+	const page = await getPage(slug);
+	if ((page?.components?.length ?? 0) === 0 && getMemoriesDefault(slug) !== undefined)
+		return <MemoriesDefault slug={slug} />;
 	if (page === null) redirect('/404');
 	const layout = buildLayoutTree(page.layouts, page.layoutId);
 	return (
