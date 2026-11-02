@@ -35,7 +35,7 @@ const JWT_METHOD_SET = new Set<string>(JWT_METHODS);
  * Client type with JWT auto-injected (jwt param removed from methods).
  * Only includes methods that had (jwt: string, ...args) signature.
  */
-type JWTInjectedClient = {
+type JWTInjectedClient = Pick<StormyCMSClient, 'graphql'> & {
 	[K in JWTMethodName]: StripJwt<StormyCMSClient[K]>;
 };
 
@@ -67,6 +67,11 @@ export async function createStormyCMSClient(): Promise<JWTInjectedClient> {
 	// Only wraps methods that have (jwt: string, ...) signature
 	return new Proxy(client, {
 		get(target, prop) {
+			if (prop === 'graphql') {
+				const graphql: StormyCMSClient['graphql'] = (query, variables, options) =>
+					target.graphql(query, variables, { ...options, jwt, autoGenerateJwt: false });
+				return graphql;
+			}
 			const value = target[prop as keyof StormyCMSClient];
 			if (typeof value !== 'function') {
 				return value;

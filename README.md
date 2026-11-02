@@ -11,7 +11,7 @@ A Next.js starter for building and editing a Stormy CMS site.
 - Node.js 20.9 or newer
 - pnpm 10
 - A Stormy CMS site with client credentials
-- S3-compatible object storage for admin media uploads
+- An active site plan for Stormy-hosted media
 
 ## Quick start
 
@@ -23,6 +23,16 @@ pnpm dev
 ```
 
 The public site runs at `http://localhost:3000` and the admin runs at `http://localhost:4000`.
+
+## Media uploads
+
+The starter uploads files to Stormy storage. Files go directly from the browser to a temporary upload URL; the API verifies them before adding them to the media library. No bucket credentials are needed in the generated project.
+
+For customer-owned storage, follow the [custom storage guide](https://docs.stormycms.com/media#keep-your-own-s3-compatible-storage) to adapt your project using the published library's S3 helpers. This is a project customization rather than a built-in provider switch. Already-scaffolded projects keep their existing code; API and published library compatibility preserves their integrations.
+
+Hosted uploads support JPEG, PNG, WebP, GIF, AVIF, and PDF, up to 100 MB per file and 2,500 files per site, within the site's storage allowance. The Upload tab is enabled only when the site can upload. External media links remain supported. Hosted media deletion removes its stored file; deleting a record for external media through the API does not delete that external file.
+
+The initial Stormy media URL redirects to storage. A CDN can be added behind that URL later. See [Media storage](https://docs.stormycms.com/media) for deployment and SDK release requirements.
 
 ## Project structure
 

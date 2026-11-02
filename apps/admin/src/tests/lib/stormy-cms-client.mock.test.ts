@@ -91,3 +91,14 @@ describe('StormyCMSClientMock', () => {
 		await expect(mock.getUserContent()).resolves.toEqual({});
 	});
 });
+
+it('keeps external media usable when test storage uploads are unavailable', async () => {
+	await expect(mock.graphql('query { mediaStorage { uploads } }')).resolves.toEqual({
+		data: { mediaStorage: { uploads: false } },
+		errors: [],
+	});
+});
+
+it('refuses unsupported raw operations in the test client', async () => {
+	await expect(mock.graphql('query { unsupported }')).rejects.toThrow('not configured in the test client');
+});

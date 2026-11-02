@@ -1,3 +1,5 @@
+const { upload } = vi.hoisted(() => ({ upload: vi.fn() }));
+vi.mock('~/lib/hosted-media-upload', () => ({ uploadHostedMedia: upload }));
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { MediaItem } from '@stormycms/core';
@@ -35,6 +37,7 @@ beforeAll(() => {
 
 beforeEach(() => {
 	fetchMock.mockReset();
+	upload.mockReset();
 	toast.success.mockClear();
 	toast.error.mockClear();
 	vi.stubGlobal('fetch', fetchMock);
@@ -48,93 +51,42 @@ const openDialog = async (label: RegExp) => {
 };
 
 describe('MediaLibrary (uncontrolled)', () => {
-	it('fetches the library and uploads a file successfully', async () => {
-		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [mediaItem('existing')] }) })
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: mediaItem('uploaded') }) });
-		const onSelect = vi.fn();
-		const onUpload = vi.fn();
-
+	it('uploads a file through Stormy and selects the result', async () => {
+		fetchMock.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ uploads: true, media: [mediaItem('existing')] }),
+		});
+		upload.mockResolvedValue(mediaItem('uploaded'));
+		const onSelect = vi.fn(),
+			onUpload = vi.fn();
 		render(<MediaLibrary selectionMode onSelect={onSelect} onUpload={onUpload} />);
-		expect(screen.getByTestId('cms-media-field')).toBeInTheDocument();
 		await openDialog(/Choose Media/);
-
 		const input = document.getElementById('dropzone-file') as HTMLInputElement;
-		await userEvent.upload(input, new File(['x'], 'pic.png', { type: 'image/png' }));
+		const file = new File(['x'], 'pic.png', { type: 'image/png' });
+		await userEvent.upload(input, file);
 		await userEvent.click(screen.getByRole('button', { name: 'Choose Selected' }));
-
 		await waitFor(() => expect(toast.success).toHaveBeenCalledWith('pic.png uploaded successfully.'));
+		expect(upload).toHaveBeenCalledWith(file, expect.objectContaining({ name: 'pic' }));
 		expect(onSelect).toHaveBeenCalledWith([expect.objectContaining({ id: 'uploaded' })]);
 		expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ id: 'uploaded' }));
 		await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 	});
-
-	it('surfaces upload failures as error toasts', async () => {
-		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
-			.mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Storage offline' }) });
-
+	it.each([new Error('Storage offline'), 'network failure'])('shows upload failures', async (error) => {
+		fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) });
+		upload.mockRejectedValue(error);
 		render(<MediaLibrary showLibraryTab={false} />);
 		await openDialog(/Upload Media/);
-
-		const input = document.getElementById('dropzone-file') as HTMLInputElement;
-		await userEvent.upload(input, new File(['x'], 'pic.png', { type: 'image/png' }));
+		await userEvent.upload(
+			document.getElementById('dropzone-file') as HTMLInputElement,
+			new File(['x'], 'pic.png', { type: 'image/png' }),
+		);
 		await userEvent.click(screen.getByRole('button', { name: 'Choose Selected' }));
-
-		await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Storage offline'));
-		expect(screen.getByRole('dialog')).toBeInTheDocument();
+		await waitFor(() =>
+			expect(toast.error).toHaveBeenCalledWith(
+				error instanceof Error ? error.message : 'Unable to upload media. Please try again.',
+			),
+		);
 	});
-
-	it('reports uploads that return no media', async () => {
-		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
-			.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
-
-		render(<MediaLibrary showLibraryTab={false} />);
-		await openDialog(/Upload Media/);
-
-		const input = document.getElementById('dropzone-file') as HTMLInputElement;
-		await userEvent.upload(input, new File(['x'], 'pic.png', { type: 'image/png' }));
-		await userEvent.click(screen.getByRole('button', { name: 'Choose Selected' }));
-
-		await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Unable to upload media. Please try again.'));
-	});
-
-	it('reports uploads whose response JSON cannot be parsed', async () => {
-		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
-			.mockResolvedValueOnce({
-				ok: true,
-				json: async () => {
-					throw new Error('bad json');
-				},
-			});
-
-		render(<MediaLibrary showLibraryTab={false} />);
-		await openDialog(/Upload Media/);
-
-		const input = document.getElementById('dropzone-file') as HTMLInputElement;
-		await userEvent.upload(input, new File(['x'], 'pic.png', { type: 'image/png' }));
-		await userEvent.click(screen.getByRole('button', { name: 'Choose Selected' }));
-
-		await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Unable to upload media. Please try again.'));
-	});
-
-	it('reports upload failures that are not Error instances', async () => {
-		fetchMock
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
-			.mockRejectedValueOnce('network failure');
-
-		render(<MediaLibrary showLibraryTab={false} />);
-		await openDialog(/Upload Media/);
-
-		const input = document.getElementById('dropzone-file') as HTMLInputElement;
-		await userEvent.upload(input, new File(['x'], 'pic.png', { type: 'image/png' }));
-		await userEvent.click(screen.getByRole('button', { name: 'Choose Selected' }));
-
-		await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Unable to upload media. Please try again.'));
-	});
-
 	it('creates URL media through the URL tab', async () => {
 		fetchMock
 			.mockResolvedValueOnce({ ok: true, json: async () => ({ uploads: true, media: [] }) })
@@ -346,7 +298,7 @@ describe('MediaLibrary without media storage', () => {
 		expect(screen.getByRole('tab', { name: 'URL' })).toHaveAttribute('aria-selected', 'true');
 		expect(document.getElementById('dropzone-file')).toBeNull();
 		expect(screen.getByRole('status')).toHaveTextContent(
-			'Uploading is off until media storage is set up. You can still add media via URL.',
+			'Uploads are unavailable for this site. You can still add media via URL.',
 		);
 	});
 

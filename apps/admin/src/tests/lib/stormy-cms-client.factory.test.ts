@@ -7,6 +7,7 @@ const { cookieStore, fakeClient } = vi.hoisted(() => {
 	};
 	const fakeClient = {
 		getJWTToken: vi.fn(),
+		graphql: vi.fn(async (...args: unknown[]) => args),
 		createPage: vi.fn(async (...args: unknown[]) => args),
 		getPages: vi.fn(async () => ['no-jwt']),
 		notAFunction: 'plain-value',
@@ -76,4 +77,15 @@ describe('createStormyCMSClient', () => {
 		await expect(client.getPages()).resolves.toEqual(['no-jwt']);
 		expect(client.notAFunction).toBe('plain-value');
 	});
+});
+
+it('binds raw GraphQL operations to the signed-in user', async () => {
+	fakeClient.getJWTToken.mockResolvedValue('minted-jwt');
+	const client = await createStormyCMSClient();
+	await client.graphql('query { mediaStorage { uploads } }', {}, { jwt: 'untrusted-override' });
+	expect(fakeClient.graphql).toHaveBeenCalledWith(
+		'query { mediaStorage { uploads } }',
+		{},
+		{ jwt: 'minted-jwt', autoGenerateJwt: false },
+	);
 });
