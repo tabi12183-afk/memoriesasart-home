@@ -61,15 +61,9 @@ If the user skipped the prompts to add .env variables during `stormy init`, they
 4. The client ID is immediately visible at the top. While this key is technically public, the user may reset the client ID any time if needed, in which case the local `.env` must change with it.
 5. The client secret will either be missing or redacted. For fresh setups, click "Generate Client Secret". For existing setups, you will have to click "Reset Client Secret" to get a new one, because the old one is not recoverable. Again, the local `.env` must be updated any time this secret is reset, even if reset by another user. All users with the "owner" or "admin" role can see and change this secret, and there's only one per site, not per user.
 
-The above is the bare minimum set up. If the user wants to set up media uploads out of the box, they have the option to simply fill out extra environment variables, in case they've set up an S3 bucket on their own. The following are default values in the `apps/admin/.env.example` file, available on the initial `stormy init` run:
+The starter uses Stormy-hosted media. Uploads use `/api/media/upload` for small signed-in control requests and transfer bytes directly to storage. Upload availability follows the site's plan and permissions. For AI uploads, use the connected MCP's storage check, prepare, complete, and cancel tools; transferring a local file also requires a file-transfer tool.
 
-```
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_BUCKET=your-media-bucket
-S3_ACCESS_KEY_ID=your-access-key
-S3_SECRET_ACCESS_KEY=your-secret-key
-S3_REGION=us-east-2
-```
+The boilerplate is scaffolded once, so do not add legacy-provider detection or migration logic. Preserve compatibility in the hosted API and published libraries. Customer-owned S3 integrations are documented at [Media storage](https://docs.stormycms.com/media#keep-your-own-s3-compatible-storage) and can be added as a project customization.
 
 ## Rules for Components
 

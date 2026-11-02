@@ -42,6 +42,13 @@ const testLayout = (): GqlLayout => ({
 const noop = () => Promise.resolve({} as unknown);
 
 export class StormyCMSClientMock {
+	// The test server has no backing file storage.
+	graphql = async (query: string) => {
+		if (query === 'query { mediaStorage { uploads } }')
+			return { data: { mediaStorage: { uploads: false } }, errors: [] };
+		throw new Error('This GraphQL operation is not configured in the test client.');
+	};
+
 	getPage = async ({ id }: { id: string }) =>
 		id === 'home-page' ? { ...testPage(id), name: 'Home', slug: '' } : testPage(id);
 	getPages = async () => [

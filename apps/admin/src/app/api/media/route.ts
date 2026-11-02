@@ -1,119 +1,54 @@
 import { NextResponse } from 'next/server';
-import { S3StorageClient } from '~/lib/s3-storage';
-import { createStormyCMSClient } from '../../../lib/stormy-cms-client.factory';
+import { createStormyCMSClient } from '~/lib/stormy-cms-client.factory';
 import { notNullish, nullish } from '~/lib/utils';
 
-class MediaStorageConfigurationError extends Error {}
-
-/** Unset, empty, or still the .env.example placeholder, which `stormy init` copies in. */
-const isUnset = (value: string | undefined): value is undefined =>
-	nullish(value) || value.trim() === '' || value.startsWith('your-');
-
-const isStorageConfigured = () =>
-	![process.env.S3_BUCKET, process.env.S3_ACCESS_KEY_ID, process.env.S3_SECRET_ACCESS_KEY].some(isUnset);
-
-function getS3Client(): S3StorageClient {
-	const bucket = process.env.S3_BUCKET;
-	const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-	const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-	if (isUnset(bucket) || isUnset(accessKeyId) || isUnset(secretAccessKey)) {
-		throw new MediaStorageConfigurationError(
-			'Media storage is not configured. Set S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY.',
-		);
-	}
-
-	return new S3StorageClient({
-		endpoint: process.env.S3_ENDPOINT ?? 'https://s3.amazonaws.com',
-		bucket,
-		accessKeyId,
-		secretAccessKey,
-		region: process.env.S3_REGION ?? 'us-east-2',
-	});
-}
-
-/**
- * GET /api/media - Get all media items from Stormy CMS server, and whether uploads to storage can work
- */
+/** List media and whether the site's plan currently permits uploads. */
 export async function GET() {
 	try {
-		const stormyCMSClient = await createStormyCMSClient();
-		const media = await stormyCMSClient.getMediaItems({ limit: 100, offset: 0 });
-
-		console.log('[API/media] Listed', media.length, 'media items from Stormy CMS');
-		return NextResponse.json({ media, uploads: isStorageConfigured() }, { status: 200 });
+		const client = await createStormyCMSClient();
+		const [media, result] = await Promise.all([
+			client.getMediaItems({ limit: 100, offset: 0 }),
+			client.graphql<{ mediaStorage: { uploads: boolean } }>('query { mediaStorage { uploads } }'),
+		]);
+		if (result.errors.length > 0 || nullish(result.data?.mediaStorage))
+			throw new Error('Media storage is unavailable.');
+		return NextResponse.json({ media, uploads: result.data.mediaStorage.uploads });
 	} catch (error) {
-		console.error('[API/media] Get media error:', error);
-		return NextResponse.json({ media: [], uploads: isStorageConfigured() }, { status: 200 });
+		console.error('Get media error:', error);
+		return NextResponse.json({ error: 'Unable to load media.' }, { status: 500 });
 	}
 }
 
-/**
- * POST /api/media - Upload new media to S3 and store metadata in Stormy CMS
- */
+/** Add a media record for a file already available at a URL. */
 export async function POST(request: Request) {
-	console.log('[API/media] POST request received');
 	try {
-		const formData = await request.formData();
-		const file = formData.get('file') as File | null;
-		const url = formData.get('url') as string | null;
-		const name = formData.get('name') as string | null;
-		const alt = formData.get('alt') as string | null;
-		const tags = formData.get('tags') as string | null;
-
-		console.log('[API/media] Received file:', file?.name, 'URL:', url, 'Size:', file?.size, 'Type:', file?.type);
-
-		if (nullish(file) && nullish(url)) {
-			return NextResponse.json({ error: 'file or url is required' }, { status: 400 });
-		}
-
-		let publicUrl: string;
-		const metadata: Record<string, unknown> = {};
-
-		if (notNullish(file)) {
-			// Upload to S3
-			const s3Client = getS3Client();
-			const { publicUrl: uploadedUrl, key } = await s3Client.upload(file);
-			publicUrl = uploadedUrl;
-			metadata.s3Key = key;
-		} else {
-			publicUrl = url as string;
-		}
-
-		const parsedTags = notNullish(tags)
-			? tags
-					.split(',')
-					.map((t) => t.trim())
-					.filter((t) => t !== '')
-			: undefined;
-
-		// Store metadata in Stormy CMS
-		const stormyCMSClient = await createStormyCMSClient();
-		const primaryType = notNullish(file) ? file.type.replace(/\/.*$/, '') : '';
-		const type = notNullish(file) ? (primaryType !== '' ? primaryType.toLowerCase() : 'file') : 'image';
-		const media = await stormyCMSClient.createMedia({
-			type,
-			url: publicUrl,
-			name: name ?? file?.name ?? publicUrl,
+		const form = await request.formData();
+		const url = form.get('url');
+		if (typeof url !== 'string' || url === '') return NextResponse.json({ error: 'url is required' }, { status: 400 });
+		const name = form.get('name'),
+			alt = form.get('alt'),
+			tags = form.get('tags');
+		const client = await createStormyCMSClient();
+		const media = await client.createMedia({
+			type: 'image',
+			url,
+			name: typeof name === 'string' ? name : url,
 			metadata: {
-				...metadata,
-				...(notNullish(alt) ? { alt } : {}),
-				...(notNullish(parsedTags) ? { tags: parsedTags } : {}),
+				...(typeof alt === 'string' ? { alt } : {}),
+				...(typeof tags === 'string'
+					? {
+							tags: tags
+								.split(',')
+								.map((t) => t.trim())
+								.filter((t) => t !== ''),
+						}
+					: {}),
 			},
 		});
-
-		console.log('[API/media] Created media in Stormy CMS:', media.id, 'URL:', publicUrl);
-
 		return NextResponse.json({ media }, { status: 201 });
 	} catch (error) {
-		console.error('Create media error:', error);
-		if (error instanceof MediaStorageConfigurationError) {
-			return NextResponse.json({ error: error.message }, { status: 503 });
-		}
-		const details = error instanceof Error ? error.message : String(error);
-		return NextResponse.json(
-			{ error: 'Unable to upload media. Check the storage configuration and try again.', details },
-			{ status: 500 },
-		);
+		console.error('Add media error:', error);
+		return NextResponse.json({ error: 'Unable to add media.' }, { status: 500 });
 	}
 }
 
@@ -160,38 +95,14 @@ export async function PUT(request: Request) {
 	}
 }
 
-/**
- * DELETE /api/media - Delete media item from S3 and Stormy CMS
- */
+/** Delete a media record; the API removes files held in Stormy storage. */
 export async function DELETE(request: Request) {
 	try {
-		const { searchParams } = new URL(request.url);
-		const id = searchParams.get('id');
-
-		if (nullish(id)) {
-			return NextResponse.json({ error: 'id query parameter is required' }, { status: 400 });
-		}
-
-		const stormyCMSClient = await createStormyCMSClient();
-
-		// Delete from Stormy CMS first; the returned metadata tells us what to clean up in storage
-		const media = await stormyCMSClient.deleteMedia({ id });
-		console.log('[API/media] Deleted from Stormy CMS:', id);
-
-		// Clean up the underlying storage object using the returned metadata
-		const key = media.metadata?.s3Key as string | undefined;
-		if (notNullish(key)) {
-			try {
-				const s3Client = getS3Client();
-				await s3Client.delete(key);
-				console.log('[API/media] Deleted from S3:', key);
-			} catch (s3Error) {
-				console.error('[API/media] S3 delete failed:', s3Error);
-				// Metadata is already removed; surface the storage failure but don't fail the request
-			}
-		}
-
-		return NextResponse.json({ message: 'Media deleted successfully', media }, { status: 200 });
+		const id = new URL(request.url).searchParams.get('id');
+		if (nullish(id)) return NextResponse.json({ error: 'id query parameter is required' }, { status: 400 });
+		const client = await createStormyCMSClient();
+		const media = await client.deleteMedia({ id });
+		return NextResponse.json({ message: 'Media deleted successfully', media });
 	} catch (error) {
 		console.error('Delete media error:', error);
 		return NextResponse.json({ error: 'Failed to delete media' }, { status: 500 });

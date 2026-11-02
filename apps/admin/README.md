@@ -16,7 +16,7 @@ Open `http://localhost:4000`.
 - `NEXT_PUBLIC_SITE_URL` is the admin URL used for authentication redirects.
 - `NEXT_PUBLIC_PREVIEW_SITE_URL` points to the public site, normally `http://localhost:3000` locally.
 
-Set the `S3_*` variables documented in `.env.example` for media routes. Use a restricted bucket credential in production.
+Media uploads use Stormy-hosted storage and the site’s plan allowance. No S3 credentials are required in this app. For a custom storage provider, follow the [media storage guide](https://docs.stormycms.com/media#keep-your-own-s3-compatible-storage).
 
 ## Verification
 

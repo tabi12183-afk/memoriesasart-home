@@ -1,4 +1,5 @@
 'use client';
+import { uploadHostedMedia } from '~/lib/hosted-media-upload';
 
 import { useState, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
@@ -295,9 +296,7 @@ export function MediaLibrary({
 				setInternalMedia(data.media ?? []);
 				setUploads(_uploads);
 				if (!_uploads) {
-					console.warn(
-						'Uploads are disabled. Set S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in your environment.',
-					);
+					console.warn('Uploads are unavailable. You can still add a media URL.');
 				}
 			} catch (error) {
 				console.error('Error fetching media:', error);
@@ -324,24 +323,7 @@ export function MediaLibrary({
 		if (isControlled) return;
 
 		try {
-			const formData = new FormData();
-			formData.append('file', file);
-			formData.append('name', metadata.name);
-			formData.append('alt', metadata.alt);
-			formData.append('tags', metadata.tags);
-
-			console.log('[MediaLibrary] Sending FormData with file:', file.name);
-			const response = await fetch('/api/media', {
-				method: 'POST',
-				body: formData,
-			});
-			const data = (await response.json().catch(() => ({}))) as { error?: string; details?: string; media?: MediaItem };
-
-			if (!response.ok || nullish(data.media)) {
-				const message = data.error ?? 'Unable to upload media. Please try again.';
-				throw new Error(message, { cause: data.details });
-			}
-			const uploadedMedia = data.media;
+			const uploadedMedia = await uploadHostedMedia(file, metadata);
 
 			console.log('[MediaLibrary] File uploaded successfully:', uploadedMedia.id);
 			setInternalMedia((prev) => [...prev, uploadedMedia]);
@@ -419,7 +401,7 @@ export function MediaLibrary({
 								className="mt-3 flex shrink-0 items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50/60 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200"
 							>
 								<TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-								<p>Uploading is off until media storage is set up. You can still add media via URL.</p>
+								<p>Uploads are unavailable for this site. You can still add media via URL.</p>
 							</div>
 						)}
 						<TabsContent value="url" className="mt-4 flex-1 flex flex-col min-h-0 overflow-auto">
