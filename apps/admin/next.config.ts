@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
 	images: {
 		formats: ['image/avif', 'image/webp'],
 		remotePatterns: [
-			{ protocol: 'https', hostname: 'api.stormycms.com', port: '', pathname: '/media/**' },
+			{ protocol: 'https', hostname: 'cdn.stormycms.com', port: '', pathname: '/uploads/**' },
 			{
 				protocol: 'https',
 				hostname: 'via.placeholder.com',
