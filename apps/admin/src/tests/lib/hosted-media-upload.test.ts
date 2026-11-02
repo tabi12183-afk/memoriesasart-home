@@ -6,7 +6,7 @@ const metadata = { name: 'lake.png', alt: 'Lake', tags: 'nature' };
 const media = {
 	id: 'a',
 	type: 'image',
-	url: 'https://api.test/media/site/a',
+	url: 'https://cdn.stormycms.com/uploads/site/a',
 	name: 'lake.png',
 	metadata: { storage: 'stormy' },
 	siteId: 'site',
